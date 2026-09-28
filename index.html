@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Chaco Verde v41</title>
+<title>Chaco Verde v43</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#1a1a1a;color:#e0e0e0;font-family:'Segoe UI',sans-serif;height:100vh;overflow:hidden;display:flex;flex-direction:column}
@@ -26,7 +26,8 @@ body{background:#1a1a1a;color:#e0e0e0;font-family:'Segoe UI',sans-serif;height:1
 .msub:hover{color:#ccc;background:#161e11}
 .msub.actif{color:#7ec850;font-weight:600}
 #main{flex:1;overflow:hidden;display:flex;flex-direction:column}
-#panel{flex:1;overflow-y:auto;padding:16px}
+#panel-outer{display:none}
+#panel{}
 .section-title{font-size:14px;font-weight:700;color:#7ec850;margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid #2a4a1a}
 .card{background:#161e11;border:1px solid #2a4a1a;border-radius:6px;padding:12px;margin-bottom:12px}
 .card-title{font-size:12px;color:#7ec850;font-weight:700;margin-bottom:8px}
@@ -64,7 +65,21 @@ table.gt tr:hover td{background:#1e2a14}
 #svg-container{width:100%;height:100%;cursor:grab;user-select:none;touch-action:none}
 #svg-container:active{cursor:grabbing}
 #svg-container svg{display:block}
-#tooltip{position:absolute;background:rgba(10,20,5,.95);border:1px solid #3a6a2a;border-radius:4px;padding:8px 12px;font-size:12px;pointer-events:none;display:none;z-index:20;max-width:220px}
+#bloc-panel{position:absolute;top:50px;left:10px;z-index:15;background:rgba(10,15,7,.96);border:1px solid #3a6a2a;border-radius:6px;padding:12px 14px;font-size:12px;max-width:260px;max-height:65%;overflow-y:auto;display:none;line-height:1.6}
+#bloc-panel .bp-close{float:right;cursor:pointer;color:#e06060;font-weight:700;margin-left:8px}
+#sel-overlay{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);z-index:15;background:rgba(15,25,10,.97);border:1px solid #5a9a3a;border-radius:6px;padding:10px 16px;font-size:12px;display:none;text-align:center;max-width:92%}
+.breadcrumb{font-size:12px;color:#7ec850;font-weight:700;padding-bottom:10px;margin-bottom:12px;border-bottom:1px solid #2a4a1a}
+
+/* MODALE */
+#modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:200;align-items:center;justify-content:center}
+#modal-box{background:#161e11;border:1px solid #3a6a2a;border-radius:8px;padding:20px;max-width:420px;width:90%;max-height:80vh;overflow-y:auto}
+#modal-title{font-size:14px;font-weight:700;color:#7ec850;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #2a4a1a}
+
+/* FILTRES CARTE */
+#carte-filtres{position:absolute;top:10px;left:10px;z-index:10;display:flex;gap:4px}
+.mf-btn{background:rgba(20,40,10,.9);border:1px solid #3a5a2a;color:#aaa;padding:5px 10px;border-radius:4px;cursor:pointer;font-size:11px;user-select:none}
+.mf-btn:hover{color:#ddd}
+.mf-btn.actif{background:rgba(80,140,40,.9);color:#fff;font-weight:700}
 
 /* JOURNAL */
 #journal{background:#0e1608;border-top:2px solid #2a4a1a;max-height:160px;overflow-y:auto;padding:10px 16px;flex-shrink:0}
@@ -113,7 +128,8 @@ table.gt tr:hover td{background:#1e2a14}
 <div id="header">
   <h1>🌿 CHACO VERDE</h1>
   <div id="hinfo">
-    <div class="hi">Semaine <span id="h-tour">1</span> · An <span id="h-an">1</span></div>
+    <div class="hi">📅 <span id="h-date">1 Janvier An 1 · ☀️ Été</span></div>
+    <div class="hi">Semaine <span id="h-tour">1</span></div>
     <div class="hi">💰 <span id="h-cash">850 000</span> $</div>
     <div class="hi">🐄 <span id="h-ugb">0</span> UGB</div>
     <div class="hi">🌾 <span id="h-ha-cult">0</span> ha cult.</div>
@@ -126,25 +142,26 @@ table.gt tr:hover td{background:#1e2a14}
 
 <div id="layout">
   <div id="menu">
-    <div class="mtab actif" onclick="setTab('carte')" id="tab-carte"><span class="ico">🗺️</span> Carte</div>
+    <div class="mtab" onclick="setTab('carte')" id="tab-carte"><span class="ico">🗺️</span> Carte</div>
     <div class="mtab" onclick="setTab('troupeau')" id="tab-troupeau"><span class="ico">🐄</span> Troupeau</div>
-    <div class="msub actif" onclick="setSub('troupeau','lots')">↳ Lots</div>
-    <div class="msub" onclick="setSub('troupeau','sante')">↳ Santé & GMQ</div>
-    <div class="msub" onclick="setSub('troupeau','ventes')">↳ Ventes</div>
+    <div class="msub" data-tab="troupeau" data-sub="lots" onclick="setSub('troupeau','lots')">↳ Lots</div>
+    <div class="msub" data-tab="troupeau" data-sub="sante" onclick="setSub('troupeau','sante')">↳ Santé & GMQ</div>
+    <div class="msub" data-tab="troupeau" data-sub="ventes" onclick="setSub('troupeau','ventes')">↳ Ventes</div>
     <div class="mtab" onclick="setTab('parcelles')" id="tab-parcelles"><span class="ico">🌱</span> Parcelles</div>
-    <div class="msub actif" onclick="setSub('parcelles','etat')">↳ État</div>
-    <div class="msub" onclick="setSub('parcelles','defriche')">↳ Défrichage</div>
-    <div class="msub" onclick="setSub('parcelles','cultures')">↳ Cultures</div>
+    <div class="msub" data-tab="parcelles" data-sub="etat" onclick="setSub('parcelles','etat')">↳ État</div>
+    <div class="msub" data-tab="parcelles" data-sub="defriche" onclick="setSub('parcelles','defriche')">↳ Défrichage</div>
+    <div class="msub" data-tab="parcelles" data-sub="cultures" onclick="setSub('parcelles','cultures')">↳ Cultures</div>
     <div class="mtab" onclick="setTab('finances')" id="tab-finances"><span class="ico">💰</span> Finances</div>
-    <div class="msub actif" onclick="setSub('finances','tresorerie')">↳ Trésorerie</div>
-    <div class="msub" onclick="setSub('finances','pl')">↳ P&amp;L</div>
-    <div class="msub" onclick="setSub('finances','dettes')">↳ Emprunts</div>
-    <div class="msub" onclick="setSub('finances','investisseurs')">↳ Investisseurs</div>
+    <div class="msub" data-tab="finances" data-sub="tresorerie" onclick="setSub('finances','tresorerie')">↳ Trésorerie</div>
+    <div class="msub" data-tab="finances" data-sub="pl" onclick="setSub('finances','pl')">↳ P&amp;L</div>
+    <div class="msub" data-tab="finances" data-sub="dettes" onclick="setSub('finances','dettes')">↳ Emprunts</div>
+    <div class="msub" data-tab="finances" data-sub="investisseurs" onclick="setSub('finances','investisseurs')">↳ Investisseurs</div>
     <div class="mtab" onclick="setTab('meteo')" id="tab-meteo"><span class="ico">⛅</span> Météo</div>
     <div class="mtab" onclick="setTab('ouvriers')" id="tab-ouvriers"><span class="ico">👷</span> Ouvriers</div>
-    <div class="mtab" onclick="setTab('machines')" id="tab-machines"><span class="ico">🚜</span> Machines</div>
+    <div class="mtab" onclick="setTab('machines')" id="tab-machines"><span class="ico">🚜</span> Matériel</div>
     <div class="mtab" onclick="setTab('stocks')" id="tab-stocks"><span class="ico">📦</span> Stocks</div>
     <div class="mtab" onclick="setTab('marche')" id="tab-marche"><span class="ico">📈</span> Marché</div>
+    <div class="mtab" onclick="setTab('tuto')" id="tab-tuto"><span class="ico">❓</span> Tuto / FAQ</div>
   </div>
 
   <div id="main">
@@ -154,25 +171,41 @@ table.gt tr:hover td{background:#1e2a14}
         <div class="map-btn" onclick="mapZoomOut()" title="Zoom -">−</div>
         <div class="map-btn" onclick="mapReset()" title="Réinitialiser" style="font-size:12px">⊙</div>
       </div>
+      <div id="carte-filtres">
+        <div class="mf-btn actif" id="mf-etat" onclick="setMapFiltre('etat')">🗺️ État</div>
+        <div class="mf-btn" id="mf-culture" onclick="setMapFiltre('culture')">🌾 Cultures</div>
+        <div class="mf-btn" id="mf-fertilite" onclick="setMapFiltre('fertilite')">🌱 Fertilité</div>
+      </div>
       <div id="carte-info">🖱 Molette: zoom · Glisser: déplacer · Clic: infos parcelle</div>
       <div id="svg-container"></div>
-      <div id="tooltip"></div>
+      <div id="bloc-panel"></div>
+      <div id="sel-overlay"></div>
     </div>
-    <div id="panel"></div>
+    <div id="panel-outer" style="flex:1;overflow-y:auto;padding:16px">
+      <div id="breadcrumb" class="breadcrumb"></div>
+      <div id="panel"></div>
+    </div>
+  </div>
+</div>
+
+<div id="modal-overlay">
+  <div id="modal-box">
+    <div id="modal-title"></div>
+    <div id="modal-body"></div>
   </div>
 </div>
 
 <div id="statbar">
-  <div class="sb"><span class="sb-label">Surface:</span><span class="sb-val">7 106 ha</span></div>
-  <div class="sb"><span class="sb-label">Exploitable:</span><span class="sb-val">5 330 ha</span></div>
-  <div class="sb"><span class="sb-label">Défriché:</span><span class="sb-val" id="sb-def">0 ha</span></div>
+  <div class="sb"><span class="sb-label">Surface totale:</span><span class="sb-val" id="sb-total">7 106 ha</span></div>
+  <div class="sb"><span class="sb-label">Cultivable/en culture:</span><span class="sb-val" id="sb-def">0 ha</span></div>
+  <div class="sb"><span class="sb-label">Pangola/pâture:</span><span class="sb-val" id="sb-pangola">0 ha</span></div>
   <div class="sb"><span class="sb-label">En culture:</span><span class="sb-val" id="sb-cult">0 ha</span></div>
-  <div class="sb"><span class="sb-label">Réserve:</span><span class="sb-val">1 776 ha (25%)</span></div>
+  <div class="sb"><span class="sb-label">Couvert forêt:</span><span class="sb-val" id="sb-couvert">7 106 ha (100%)</span></div>
   <div class="sb"><span class="sb-label">Cheptel:</span><span class="sb-val" id="sb-chep">0 UGB</span></div>
 </div>
 
 <div id="journal">
-  <div class="jentry ev">🌿 Chaco Verde v41 — Bienvenue sur votre estancia de 7 106 ha.</div>
+  <div class="jentry ev">🌿 Chaco Verde v43 — Bienvenue sur votre estancia de 7 106 ha.</div>
   <div class="jentry inf">Semaine 1 — Démarrez en défrichant des parcelles depuis l'onglet Parcelles.</div>
 </div>
 
@@ -206,16 +239,54 @@ var G={
   investisseurs:[],
   plHistory:[],
   plSemaine:{revenus:0,charges:0,resultat:0},
-  finTab:'tresorerie'
+  finTab:'tresorerie',
+  selMode:null,
+  selBlocs:[],
+  selMeth:null,
+  selCulture:null,
+  mapFiltre:'etat',
+  ouvriers:[],
+  machines:[]
 };
 
 // ─── PARAMÈTRES ─────────────────────────────────────────────────────────────
 var P={
   prixSoja:355,prixMais:160,prixRiz:290,prixSorgho:150,prixBoeuf:2.0,
+  prixAchatBovin:2.3,
   prixEuca:37,salMin:550,salMax:5000,
   coutDefBroyeur:315,coutDefAndains:150,
-  valeurFonciere:10659000
+  valeurFonciere:10659000,
+  // tendances de fond (moyenne mobile lente) autour de laquelle chaque prix oscille
+  trendSoja:355,trendMais:160,trendRiz:290,trendSorgho:150,trendBoeuf:2.0
 };
+// Fait évoluer les prix de marché de façon plus réaliste : la tendance dérive lentement
+// (marche aléatoire bornée), le prix hebdo oscille autour d'elle, et un choc rare
+// (sécheresse, embargo, pic de demande...) peut déplacer durablement la tendance.
+function fluctuerMarche(){
+  function pas(trend,ref,min,max){
+    trend=trend+(Math.random()-0.5)*ref*0.015; // dérive lente
+    trend=Math.max(ref*min,Math.min(ref*max,trend));
+    return trend;
+  }
+  P.trendSoja=pas(P.trendSoja,355,0.75,1.35);
+  P.trendMais=pas(P.trendMais,160,0.70,1.40);
+  P.trendRiz=pas(P.trendRiz,290,0.75,1.30);
+  P.trendSorgho=pas(P.trendSorgho,150,0.70,1.35);
+  P.trendBoeuf=pas(P.trendBoeuf,2.0,0.80,1.30);
+  // choc de marché occasionnel (≈4% de chance/semaine) — déplace la tendance elle-même
+  if(Math.random()<0.04){
+    var choc=(0.88+Math.random()*0.24); // -12% à +12%
+    var cible=['trendSoja','trendMais','trendRiz','trendSorgho','trendBoeuf'][Math.floor(Math.random()*5)];
+    P[cible]=P[cible]*choc;
+    var noms={trendSoja:'Soja',trendMais:'Maïs',trendRiz:'Riz',trendSorgho:'Sorgho',trendBoeuf:'Bœuf'};
+    addJournal('📉 Choc de marché: '+noms[cible]+' '+(choc>1?'+':'')+Math.round((choc-1)*100)+'%','ev');
+  }
+  P.prixSoja=Math.round(P.trendSoja*(0.97+Math.random()*0.06)*10)/10;
+  P.prixMais=Math.round(P.trendMais*(0.96+Math.random()*0.08)*10)/10;
+  P.prixRiz=Math.round(P.trendRiz*(0.97+Math.random()*0.06)*10)/10;
+  P.prixSorgho=Math.round(P.trendSorgho*(0.96+Math.random()*0.08)*10)/10;
+  P.prixBoeuf=Math.round(P.trendBoeuf*(0.97+Math.random()*0.06)*100)/100;
+}
 
 // ─── DONNÉES AGRONOMIQUES ───────────────────────────────────────────────────
 var CULTURES={
@@ -272,9 +343,14 @@ var LOTS_INIT=[
 ];
 
 // ─── BLOCS SVG ──────────────────────────────────────────────────────────────
-var COLS=14,ROWS=12;
-var SVG_W=840,SVG_H=720;
+var COLS=20,ROWS=15; // grille support — seule la partie dans le polygone compte
+var SVG_W=1000,SVG_H=750;
 var BW=SVG_W/COLS,BH=SVG_H/ROWS;
+
+function blocLabel(r,c){
+  var row=r<26?String.fromCharCode(65+r):('Z'+(r-25));
+  return row+(c+1);
+}
 
 var TYPES_BLOCS={
   palmeraie:{couleur:'#2d4a1a',label:'Palmeraie'},
@@ -285,28 +361,43 @@ var TYPES_BLOCS={
   defriche:{couleur:'#6a5a2a',label:'Défriché'},
   cultivable:{couleur:'#8a7a2a',label:'Cultivable'},
   en_culture:{couleur:'#a09020',label:'En culture'},
-  fleuve:{couleur:'#1a4a6a',label:'Fleuve Paraguay'},
-  route:{couleur:'#4a3a2a',label:'Route biocéanique'},
+  horsferme:{couleur:'#0a0f07',label:'Hors propriété'},
   infra:{couleur:'#3a3a3a',label:'Infrastructure'}
 };
 
-// Carte initiale
+// Contour irrégulier de la propriété (coordonnées col,row — le fleuve et la route
+// bordent/traversent le polygone mais ne sont QUE des tracés en surimpression,
+// jamais des cases comptées dans les 7 106 ha)
+var FARM_POLY=[
+  [1.2,1.5],[5,0.4],[9.5,0.2],[13.5,1.2],[16,2.8],[17.3,5],
+  [17.6,7.5],[17,10],[15,12.2],[11.5,13.8],[7,14.5],[3.2,13.6],
+  [1,11.5],[0.3,7],[0.4,3.5]
+];
+
+function pointInPoly(x,y,poly){
+  var inside=false;
+  for(var i=0,j=poly.length-1;i<poly.length;j=i++){
+    var xi=poly[i][0],yi=poly[i][1],xj=poly[j][0],yj=poly[j][1];
+    var intersect=((yi>y)!==(yj>y))&&(x<(xj-xi)*(y-yi)/(yj-yi)+xi);
+    if(intersect)inside=!inside;
+  }
+  return inside;
+}
+
+// Carte initiale — seules les cases dont le centre est dans FARM_POLY appartiennent à la ferme
 var CARTE_INIT=(function(){
   var c={};
   for(var r=0;r<ROWS;r++){
     for(var col=0;col<COLS;col++){
       var key=r+','+col;
+      if(!pointInPoly(col+0.5,r+0.5,FARM_POLY)){c[key]='horsferme';continue;}
       var t='palmeraie';
-      // Fleuve (colonne droite)
-      if(col>=12)t='fleuve';
-      // Route (ligne médiane)
-      else if(r===6&&col<=11)t='route';
-      // Pangola existant (entrée, côté route)
-      else if((r>=5&&r<=7)&&(col>=3&&col<=6))t='pangola';
-      // Forêt native (coin NW)
-      else if(r<=2&&col<=3)t='foret';
-      // Réserve (25% = 3 colonnes sur la gauche)
-      else if(col<=2&&r>2)t='reserve';
+      // Pangola existant (zone d'entrée déjà développée, le long de la route)
+      if((r>=6&&r<=9)&&(col>=4&&col<=9))t='pangola';
+      // Forêt native (coin NW) — le reste (palmeraie) est librement défrichable ou non ;
+      // la réserve légale de 25% n'est plus un endroit fixe, c'est ce que le joueur choisit
+      // de ne jamais défricher (voir la contrainte dans confirmerConversionSelection)
+      else if(r<=2&&col<=4)t='foret';
       c[key]=t;
     }
   }
@@ -314,6 +405,18 @@ var CARTE_INIT=(function(){
 })();
 
 var carteBlocs=JSON.parse(JSON.stringify(CARTE_INIT));
+var FARM_CELL_COUNT=Object.keys(carteBlocs).filter(function(k){return carteBlocs[k]!=='horsferme';}).length;
+var HA_PAR_BLOC=Math.round((7106/FARM_CELL_COUNT)*10)/10;
+
+// Fertilité des sols (0-100) — s'use avec les cycles de culture successifs
+var fertiliteBlocs=(function(){
+  var f={};
+  Object.keys(carteBlocs).forEach(function(k){f[k]=100;});
+  return f;
+})();
+function reduireFertilite(k){
+  fertiliteBlocs[k]=Math.max(30,(fertiliteBlocs[k]||100)-8);
+}
 
 // ─── MAP ZOOM/PAN ────────────────────────────────────────────────────────────
 var mapState={scale:1,tx:0,ty:0,dragging:false,lastX:0,lastY:0,pinchDist:0};
@@ -429,66 +532,113 @@ function renderCarteMap(){
   for(var r=0;r<ROWS;r++){
     for(var col=0;col<COLS;col++){
       var key=r+','+col;
-      var t=carteBlocs[key]||'palmeraie';
+      var t=carteBlocs[key]||'horsferme';
       var x=col*BW,y=r*BH;
-      var pat='url(#pat-palm)';
-      var stroke='#1a2a10',sw=0.5;
-      if(t==='pangola')pat='url(#pat-pangola)';
-      else if(t==='pature')pat='#3a6a1a';
-      else if(t==='foret')pat='url(#pat-foret)';
-      else if(t==='reserve')pat='url(#pat-reserve)';
-      else if(t==='defriche'){pat='#6a5a2a';stroke='#8a7a4a';}
-      else if(t==='cultivable'){pat='#8a7a2a';stroke='#aaa940';}
-      else if(t==='en_culture'){pat='#a09020';stroke='#c0b030';}
-      else if(t==='fleuve'){pat='url(#pat-fleuve)';stroke='#2a6a9a';}
-      else if(t==='route'){pat='url(#pat-route)';stroke='#6a5a4a';sw=1;}
-      else if(t==='infra'){pat='#3a3a3a';stroke='#5a5a5a';}
-      // Vérifie si culture active
+      if(t==='horsferme'){
+        html+='<rect x="'+x+'" y="'+y+'" width="'+BW+'" height="'+BH+'" fill="#0a0f07"/>';
+        continue;
+      }
       var cult=getCultureBloc(key);
-      if(cult){pat=CULTURES[cult]?CULTURES[cult].couleur:'#a09020';}
-      // Vérifie chantier défriche
       var chan=getChantierBloc(key);
-      if(chan){pat='#5a4a1a';stroke='#7a6a3a';}
+      var pat,stroke='#1a2a10',sw=0.5;
+      if(G.mapFiltre==='culture'){
+        if(cult&&CULTURES[cult])pat=CULTURES[cult].couleur;
+        else if(t==='cultivable')pat='#4a4530';
+        else if(t==='defriche')pat='#3a3525';
+        else pat='#131a0d';
+      } else if(G.mapFiltre==='fertilite'){
+        var agricole=(t==='cultivable'||t==='defriche'||t==='en_culture'||t==='palmeraie');
+        if(!agricole)pat='#131a0d';
+        else{
+          var fert=fertiliteBlocs[key]!==undefined?fertiliteBlocs[key]:100;
+          var pct=fert/100;
+          var rr=Math.round(190*(1-pct)+50*pct),gg=Math.round(60*(1-pct)+170*pct);
+          pat='rgb('+rr+','+gg+',40)';
+        }
+      } else {
+        pat='url(#pat-palm)';
+        if(t==='pangola')pat='url(#pat-pangola)';
+        else if(t==='pature')pat='#3a6a1a';
+        else if(t==='foret')pat='url(#pat-foret)';
+        else if(t==='reserve')pat='url(#pat-reserve)';
+        else if(t==='defriche'){pat='#6a5a2a';stroke='#8a7a4a';}
+        else if(t==='cultivable'){pat='#8a7a2a';stroke='#aaa940';}
+        else if(t==='en_culture'){pat='#a09020';stroke='#c0b030';}
+        else if(t==='infra'){pat='#3a3a3a';stroke='#5a5a5a';}
+        if(cult){pat=CULTURES[cult]?CULTURES[cult].couleur:'#a09020';}
+        if(chan){pat='#5a4a1a';stroke='#7a6a3a';}
+      }
+      // Surbrillance sélection active
+      var selected=G.selMode&&G.selBlocs.indexOf(key)>=0;
+      if(selected){stroke='#ffe066';sw=3;}
       html+='<rect x="'+x+'" y="'+y+'" width="'+BW+'" height="'+BH+'"';
       html+=' fill="'+pat+'" stroke="'+stroke+'" stroke-width="'+sw+'"';
       html+=' data-k="'+key+'" onclick="clickBloc(\''+key+'\')"';
-      html+=' onmouseenter="showTooltip(event,\''+key+'\')"';
-      html+=' onmouseleave="hideTooltip()"';
       html+=' style="cursor:pointer"/>';
       // Icônes culture
       if(cult&&CULTURES[cult]){
         var cx2=x+BW/2,cy2=y+BH/2;
-        html+='<text x="'+cx2+'" y="'+(cy2+5)+'" text-anchor="middle" font-size="16" style="pointer-events:none">🌾</text>';
+        html+='<text x="'+cx2+'" y="'+(cy2+4)+'" text-anchor="middle" font-size="14" style="pointer-events:none">🌾</text>';
       }
-      if(t==='pangola'){
-        html+='<text x="'+(x+BW/2)+'" y="'+(y+BH/2+5)+'" text-anchor="middle" font-size="12" style="pointer-events:none;opacity:.7">🟢</text>';
+      if(t==='pangola'&&G.mapFiltre==='etat'){
+        html+='<text x="'+(x+BW/2)+'" y="'+(y+BH/2+4)+'" text-anchor="middle" font-size="10" style="pointer-events:none;opacity:.7">🟢</text>';
       }
-      if(t==='fleuve'&&col===12){
-        html+='<text x="'+(x+BW/2)+'" y="'+(y+BH/2+4)+'" text-anchor="middle" font-size="10" fill="#7ac0e0" style="pointer-events:none">~</text>';
+      if(selected){
+        html+='<text x="'+(x+BW/2)+'" y="'+(y+BH/2+4)+'" text-anchor="middle" font-size="14" style="pointer-events:none">✓</text>';
       }
+      // Identifiant du bloc
+      html+='<text x="'+(x+3)+'" y="'+(y+9)+'" font-size="6.5" fill="rgba(255,255,255,.5)" style="pointer-events:none">'+blocLabel(r,col)+'</text>';
     }
   }
-  // Lots troupeau
-  G.lots.forEach(function(l,i){
-    if(i<3){
-      var cx2=60+i*100,cy2=50;
-      html+='<circle cx="'+cx2+'" cy="'+cy2+'" r="18" fill="rgba(90,50,10,.8)" stroke="#c09050" stroke-width="1.5" style="pointer-events:none"/>';
-      html+='<text x="'+cx2+'" y="'+(cy2-4)+'" text-anchor="middle" font-size="10" fill="#e0c080" style="pointer-events:none">🐄</text>';
-      html+='<text x="'+cx2+'" y="'+(cy2+9)+'" text-anchor="middle" font-size="9" fill="#e0c080" style="pointer-events:none">'+l.nb+'</text>';
-    }
+  // Route biocéanique — tracée exactement sur une bordure de grille (rangée 7), ne coupe aucune parcelle en son centre
+  html+='<path d="M0,'+(7*BH)+' L'+(17.2*BW)+','+(7*BH)+'" stroke="#6a5a4a" stroke-width="4" stroke-dasharray="10,6" fill="none" opacity=".85" style="pointer-events:none"/>';
+  html+='<text x="10" y="'+(7*BH-6)+'" font-size="9" fill="#9a8a6a" style="pointer-events:none">Route biocéanique</text>';
+  // Fleuve Paraguay — deux bras (le fleuve contourne une île/banc de sable typique de cette portion)
+  html+='<path d="M'+(17.6*BW)+',0 C'+(18.3*BW)+','+(4*BH)+' '+(17*BW)+','+(9*BH)+' '+(18*BW)+','+SVG_H+'" stroke="#1a4a6a" stroke-width="'+(BW*1.3)+'" fill="none" opacity=".9" style="pointer-events:none"/>';
+  html+='<path d="M'+(17.6*BW)+',0 C'+(18.3*BW)+','+(4*BH)+' '+(17*BW)+','+(9*BH)+' '+(18*BW)+','+SVG_H+'" stroke="#2a6a9a" stroke-width="1.5" fill="none" opacity=".5" style="pointer-events:none"/>';
+  html+='<path d="M'+(17.3*BW)+','+(6.5*BH)+' C'+(16.6*BW)+','+(8*BH)+' '+(16.7*BW)+','+(10.5*BH)+' '+(17.6*BW)+','+(12.5*BH)+'" stroke="#1a4a6a" stroke-width="'+(BW*0.45)+'" fill="none" opacity=".85" style="pointer-events:none"/>';
+  html+='<ellipse cx="'+(17.1*BW)+'" cy="'+(9.3*BH)+'" rx="'+(BW*0.35)+'" ry="'+(BH*1.6)+'" fill="#0e2a08" opacity=".6" style="pointer-events:none"/>';
+  html+='<text x="'+(18.2*BW)+'" y="18" font-size="10" fill="#7ac0e0" style="pointer-events:none">Río Paraguay</text>';
+  html+='<text x="'+(18.2*BW)+'" y="30" font-size="9" fill="#5a8aa0" style="pointer-events:none">(Concepción, rive est)</text>';
+  // Points de vente / logistique (repères fixes, hors hectares)
+  html+='<circle cx="'+(18.6*BW)+'" cy="'+(9.3*BH)+'" r="6" fill="#5a3a8a" stroke="#c0a0e0" stroke-width="1.5" style="pointer-events:none"/>';
+  html+='<text x="'+(18.6*BW)+'" y="'+(9.3*BH+3)+'" text-anchor="middle" font-size="8" style="pointer-events:none">🏭</text>';
+  html+='<text x="'+(18.6*BW-8)+'" y="'+(9.3*BH+18)+'" font-size="8" fill="#c0a0e0" text-anchor="end" style="pointer-events:none">Frigorifico Concepción</text>';
+  var portR=Math.min(ROWS-1,10),portC=17;
+  html+='<circle cx="'+(portC*BW+BW/2)+'" cy="'+(portR*BH+BH/2)+'" r="7" fill="#3a5a8a" stroke="#a0c0e0" stroke-width="1.5" style="pointer-events:none"/>';
+  html+='<text x="'+(portC*BW+BW/2)+'" y="'+(portR*BH+BH/2+3)+'" text-anchor="middle" font-size="9" style="pointer-events:none">⚓</text>';
+  html+='<text x="'+(portC*BW+BW/2-10)+'" y="'+(portR*BH+BH/2+18)+'" font-size="8" fill="#a0c0e0" text-anchor="end" style="pointer-events:none">Port fluvial (projet)</text>';
+  // Lots troupeau — un marqueur par parcelle réellement occupée
+  var parcLots={};
+  G.lots.forEach(function(l){
+    if(!parcLots[l.parcelle])parcLots[l.parcelle]=[];
+    parcLots[l.parcelle].push(l);
+  });
+  Object.keys(parcLots).forEach(function(label){
+    var key=labelToKey(label);
+    if(!key)return;
+    var rc=key.split(',');var rr2=+rc[0],cc2=+rc[1];
+    var cx2=cc2*BW+BW/2,cy2=rr2*BH+BH/2;
+    var totalNb=parcLots[label].reduce(function(s,l){return s+l.nb;},0);
+    html+='<circle cx="'+cx2+'" cy="'+cy2+'" r="13" fill="rgba(90,50,10,.9)" stroke="#e0c080" stroke-width="1.5" style="cursor:pointer" onclick="showLotsInfoPanel(\''+label+'\')"/>';
+    html+='<text x="'+cx2+'" y="'+(cy2-2)+'" text-anchor="middle" font-size="9" fill="#f0d0a0" style="pointer-events:none">🐄</text>';
+    html+='<text x="'+cx2+'" y="'+(cy2+9)+'" text-anchor="middle" font-size="8" fill="#f0d0a0" style="pointer-events:none">'+totalNb+'</text>';
   });
   // Légende
-  var lx=10,ly=SVG_H-80;
-  html+='<rect x="'+lx+'" y="'+ly+'" width="180" height="72" rx="3" fill="rgba(10,15,8,.85)" stroke="#2a4a1a"/>';
+  var lx=10,ly=SVG_H-88;
+  var haCouvertLeg=countBlocsType('palmeraie')+countBlocsType('foret');
+  var totalLeg=Math.round(FARM_CELL_COUNT*HA_PAR_BLOC);
+  var pctCouvertLeg=Math.round(haCouvertLeg/totalLeg*100);
+  html+='<rect x="'+lx+'" y="'+ly+'" width="185" height="80" rx="3" fill="rgba(10,15,8,.85)" stroke="#2a4a1a"/>';
   html+='<text x="'+(lx+8)+'" y="'+(ly+14)+'" font-size="10" fill="#7ec850">LÉGENDE</text>';
-  var leges=[['palmeraie','#2d4a1a','Palmeraie'],['pangola','#4a7a2a','Pangola/Pâture'],
-             ['defriche','#6a5a2a','Défriché'],['cultivable','#8a7a2a','Cultivable'],
-             ['reserve','#0e2a08','Réserve 25%']];
+  var leges=[['palmeraie','#2d4a1a','Palmeraie/forêt'],['pangola','#4a7a2a','Pangola/Pâture'],
+             ['defriche','#6a5a2a','Chantier en cours'],['cultivable','#8a7a2a','Cultivable']];
   leges.forEach(function(le,i){
     var ry=ly+20+i*10;
     html+='<rect x="'+(lx+8)+'" y="'+ry+'" width="10" height="8" fill="'+le[1]+'"/>';
     html+='<text x="'+(lx+22)+'" y="'+(ry+7)+'" font-size="9" fill="#ccc">'+le[2]+'</text>';
   });
+  html+='<text x="'+(lx+8)+'" y="'+(ly+20+leges.length*10+6)+'" font-size="9" fill="'+(pctCouvertLeg<=27?'#e08060':'#7ec850')+'">Couvert forêt: '+pctCouvertLeg+'% (min 25%)</text>';
   // Boussole
   html+='<text x="'+(SVG_W-30)+'" y="30" text-anchor="middle" font-size="14" fill="#7ec850">N</text>';
   html+='<line x1="'+(SVG_W-30)+'" y1="35" x2="'+(SVG_W-30)+'" y2="60" stroke="#7ec850" stroke-width="1.5"/>';
@@ -508,65 +658,294 @@ function getCultureBloc(key){
 
 function getChantierBloc(key){
   for(var i=0;i<G.chantiers.length;i++){
-    if(G.chantiers[i].blocs&&G.chantiers[i].blocs.indexOf(key)>=0&&G.chantiers[i].type==='defriche') return G.chantiers[i];
+    if(G.chantiers[i].blocs&&G.chantiers[i].blocs.indexOf(key)>=0) return G.chantiers[i];
   }
   return null;
 }
 
+function labelToKey(label){
+  for(var k in carteBlocs){
+    if(carteBlocs[k]==='horsferme')continue;
+    var rc=k.split(',');
+    if(blocLabel(+rc[0],+rc[1])===label) return k;
+  }
+  return null;
+}
+
+function showLotsInfoPanel(label){
+  var lotsHere=G.lots.filter(function(l){return l.parcelle===label;});
+  var html='<span class="bp-close" onclick="closeBlocPanel()">✕</span>';
+  html+='<div style="font-weight:700;color:#7ec850;margin-bottom:6px">🐄 Parcelle '+label+'</div>';
+  lotsHere.forEach(function(l){
+    var santeCls=l.sante>=85?'#7ec850':l.sante>=70?'#e0a060':'#e06060';
+    html+='<div style="margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid #2a3a1a">';
+    html+='<b>'+l.nom+'</b> ('+l.espece+')<br>';
+    html+=l.nb+' têtes · '+l.poids+' kg · GMQ '+l.gmq.toFixed(2)+' kg/j<br>';
+    html+='Santé: <span style="color:'+santeCls+'">'+l.sante+'%</span>';
+    if(l.echoVide>0) html+=' · <span style="color:#e06060">'+l.echoVide+' vides</span>';
+    html+='<br><button class="btn" style="margin-top:4px" onclick="setTab(\'troupeau\');setSub(\'troupeau\',\'lots\')">Gérer ce lot</button>';
+    html+='</div>';
+  });
+  var pnl=document.getElementById('bloc-panel');
+  pnl.innerHTML=html;pnl.style.display='block';
+}
+
 function clickBloc(key){
+  if(G.selMode){
+    toggleSelBloc(key);
+    return;
+  }
+  showBlocInfoPanel(key);
+}
+
+// Quatre types de conversion de terrain — chacun avec sa surface source, sa cible, son coût et sa durée
+var CONVERSIONS={
+  defriche_leger:{from:['palmeraie','foret'],to:'pangola',coutHa:150,haParSem:40,label:'Défrichage léger → Pangola (andains)',permis:true},
+  defriche_lourd:{from:['palmeraie','foret'],to:'cultivable',coutHa:315,haParSem:20,label:'Défrichage lourd → Cultivable (broyeur)',permis:true},
+  mise_en_culture:{from:['pangola','pature'],to:'cultivable',coutHa:90,haParSem:35,label:'Mise en culture (pangola → cultivable)',permis:false},
+  remise_patures:{from:['cultivable','defriche'],to:'pangola',coutHa:40,haParSem:60,label:'Remise en pâture (semis de Brachiaria)',permis:false}
+};
+
+function toggleSelBloc(key){
+  var t=carteBlocs[key];
+  var eligible=false;
+  if(G.selMode==='semis') eligible=(t==='cultivable');
+  else if(CONVERSIONS[G.selMode]) eligible=CONVERSIONS[G.selMode].from.indexOf(t)>=0;
+  if(!eligible)return;
+  var idx=G.selBlocs.indexOf(key);
+  if(idx>=0)G.selBlocs.splice(idx,1);
+  else G.selBlocs.push(key);
+  renderCarteMap();
+  updateSelOverlay();
+}
+
+function updateSelOverlay(){
+  var ov=document.getElementById('sel-overlay');
+  if(!ov)return;
+  if(!G.selMode){ov.style.display='none';return;}
+  ov.style.display='block';
+  var n=G.selBlocs.length;
+  var ha=Math.round(n*HA_PAR_BLOC*10)/10;
+  var html='';
+  if(G.selMode==='semis'){
+    var c=CULTURES[G.selCulture];
+    var coutSemis=Math.round(ha*(c?c.coutITK*0.35:0));
+    html='<b>🌱 Semis — '+(c?c.nom:G.selCulture)+'</b> — '+n+' bloc(s), ≈'+ha+' ha · Coût: '+nf(coutSemis)+' $<br>';
+    html+='<button class="btn" onclick="confirmerSemisSelection()">✅ Confirmer</button>';
+    html+='<button class="btn btn-r" onclick="annulerSelection()">✖ Annuler</button>';
+    html+='<div style="font-size:11px;color:#aaa;margin-top:4px">Cliquez les blocs cultivables à semer</div>';
+  } else if(CONVERSIONS[G.selMode]){
+    var conv=CONVERSIONS[G.selMode];
+    var cout=Math.round(ha*conv.coutHa);
+    html='<b>🚧 '+conv.label+'</b> — '+n+' bloc(s), ≈'+ha+' ha · Coût: '+nf(cout)+' $<br>';
+    html+='<button class="btn" onclick="confirmerConversionSelection()">✅ Confirmer</button>';
+    html+='<button class="btn btn-r" onclick="annulerSelection()">✖ Annuler</button>';
+    html+='<div style="font-size:11px;color:#aaa;margin-top:4px">Cliquez les blocs '+conv.from.join('/')+' concernés</div>';
+  }
+  ov.innerHTML=html;
+}
+
+function annulerSelection(){
+  G.selMode=null;G.selBlocs=[];G.selCulture=null;
+  renderCarteMap();updateSelOverlay();
+}
+
+function confirmerConversionSelection(){
+  var conv=CONVERSIONS[G.selMode];
+  if(!conv)return;
+  if(conv.permis&&!G.permisSeam){alert('Permis SEAM requis');return;}
+  var n=G.selBlocs.length;
+  if(n===0){alert('Sélectionnez au moins un bloc');return;}
+  var ha=Math.round(n*HA_PAR_BLOC*10)/10;
+  // Contrainte réserve légale : le défrichage de forêt/palmeraie ne peut pas faire passer
+  // le couvert forestier restant sous 25% de la surface totale de la ferme
+  if(G.selMode==='defriche_leger'||G.selMode==='defriche_lourd'){
+    var couvertActuel=countBlocsType('palmeraie')+countBlocsType('foret');
+    var totalFerme=Math.round(FARM_CELL_COUNT*HA_PAR_BLOC);
+    var seuil=Math.round(totalFerme*0.25);
+    var couvertApres=couvertActuel-ha;
+    if(couvertApres<seuil){
+      alert('Réserve légale insuffisante : il doit rester au moins 25% de couvert forestier, soit '+seuil+' ha.\nActuellement '+couvertActuel+' ha — cette opération le ferait descendre à '+couvertApres+' ha.');
+      return;
+    }
+  }
+  var cout=Math.round(ha*conv.coutHa);
+  if(G.tresorerie<cout){alert('Fonds insuffisants ('+nf(cout)+' $ requis)');return;}
+  var haParSemEff=conv.haParSem;
+  var bonusBroyeur=(G.selMode==='defriche_lourd'&&possedeeBroyeur());
+  if(bonusBroyeur) haParSemEff=Math.round(haParSemEff*1.5);
+  var duree=Math.max(1,Math.round(ha/haParSemEff));
+  var blocs=G.selBlocs.slice();
+  var labels=blocs.map(function(k){var rc=k.split(',');return blocLabel(+rc[0],+rc[1]);}).join(', ');
+  if(duree<=1){
+    blocs.forEach(function(k){carteBlocs[k]=conv.to;if(conv.to==='cultivable'&&fertiliteBlocs[k]===undefined)fertiliteBlocs[k]=100;});
+    addJournal('🌿 '+conv.label+' — '+ha+' ha sur '+labels+' — '+nf(cout)+' $','ev');
+  } else {
+    blocs.forEach(function(k){carteBlocs[k]='defriche';});
+    var ch={id:'CH'+Date.now(),type:'conversion',cibleType:conv.to,label:conv.label+' — '+ha+' ha ('+labels+')',
+            blocs:blocs,duree:duree,sRestantes:duree,ha:ha,cout:cout};
+    G.chantiers.push(ch);
+    addJournal('🚧 '+conv.label+' lancé — '+ha+' ha sur '+labels+' ('+duree+' sem.'+(bonusBroyeur?', accéléré par le broyeur possédé':'')+') — '+nf(cout)+' $','ev');
+  }
+  G.tresorerie-=cout;
+  G.histDefriche.push({tour:G.tour,ha:ha,meth:conv.label,cout:cout,note:null,blocs:labels});
+  addPLCharge(conv.label,cout);
+  G.selMode=null;G.selBlocs=[];
+  renderCarteMap();updateSelOverlay();updateHeader();
+}
+
+function confirmerSemisSelection(){
+  var n=G.selBlocs.length;
+  if(n===0){alert('Sélectionnez au moins un bloc cultivable');return;}
+  var c=CULTURES[G.selCulture];
+  if(!c){alert('Culture invalide');return;}
+  var ha=Math.round(n*HA_PAR_BLOC*10)/10;
+  var coutSemis=Math.round(ha*c.coutITK*0.35);
+  if(G.tresorerie<coutSemis){alert('Fonds insuffisants ('+nf(coutSemis)+' $ requis)');return;}
+  var blocs=G.selBlocs.slice();
+  blocs.forEach(function(k){carteBlocs[k]='en_culture';});
+  var tourRecolte=(G.tour+c.duree)%1040+1;
+  G.parcCultures.push({id:'PC'+Date.now(),culture:G.selCulture,ha:ha,blocs:blocs,
+    duree:c.duree,sRestantes:c.duree,tourSemis:G.tour,tourRecolte:tourRecolte,etatSante:100});
+  G.tresorerie-=coutSemis;
+  var labels=blocs.map(function(k){var rc=k.split(',');return blocLabel(+rc[0],+rc[1]);}).join(', ');
+  addJournal('🌱 Semis '+c.nom+' sur '+ha+' ha ('+labels+') — '+nf(coutSemis)+' $','ev');
+  addPLCharge('Semis/ITK',coutSemis);
+  G.selMode=null;G.selBlocs=[];G.selCulture=null;
+  renderCarteMap();updateSelOverlay();updateHeader();
+}
+
+function showBlocInfoPanel(key){
   var t=carteBlocs[key]||'palmeraie';
   var info=TYPES_BLOCS[t]||{label:t};
-  var r=parseInt(key.split(',')[0]),c=parseInt(key.split(',')[1]);
+  var rc=key.split(',');var r=+rc[0],c=+rc[1];
+  var label=blocLabel(r,c);
   var cult=getCultureBloc(key);
   var chan=getChantierBloc(key);
-  var tt=document.getElementById('tooltip');
-  var msg='<b>Bloc ['+r+','+c+']</b><br>';
-  msg+='État: <span style="color:#7ec850">'+info.label+'</span><br>';
-  if(cult&&CULTURES[cult]) msg+='Culture: '+CULTURES[cult].nom+'<br>';
-  if(chan) msg+='Défrichage: sem. '+chan.sRestantes+' restante(s)<br>';
-  msg+='Surface: 25 ha<br>';
-  if(t==='cultivable'||t==='defriche') msg+='<br><span style="color:#aaa;font-size:11px">→ Onglet Parcelles pour cultiver</span>';
-  tt.innerHTML=msg;
-  tt.style.display='block';
-  tt.style.left='10px';
-  tt.style.top='10px';
-  setTimeout(function(){tt.style.display='none';},3000);
+  var animauxIci=G.lots.filter(function(l){return l.parcelle===label;});
+  var html='<span class="bp-close" onclick="closeBlocPanel()">✕</span>';
+  html+='<div style="font-weight:700;color:#7ec850;margin-bottom:6px">Parcelle '+label+'</div>';
+  var fert=fertiliteBlocs[key];
+  html+='État: <b>'+info.label+'</b><br>Surface: ≈'+HA_PAR_BLOC.toFixed(1)+' ha';
+  if(fert!==undefined&&(t==='cultivable'||t==='defriche'||t==='en_culture'||t==='palmeraie')) html+='<br>Fertilité du sol: <b style="color:'+(fert>=80?'#7ec850':fert>=50?'#e0a060':'#e06060')+'">'+fert+'%</b>';
+  if(cult&&CULTURES[cult]){
+    var pc=G.parcCultures.find(function(p){return p.blocs.indexOf(key)>=0;});
+    var pct=pc&&pc.pret?100:(pc?Math.round((pc.duree-pc.sRestantes)/pc.duree*100):0);
+    var stadeTxt=pc&&pc.pret?'🌾 Prêt à récolter !':getStade(pct);
+    html+='<br><br>🌾 Culture: <b>'+CULTURES[cult].nom+'</b><br>Stade: '+stadeTxt;
+    if(pc){
+      var etatB=getEtatCulture(pc);
+      html+='<br>État: <b style="color:'+etatB.color+'">'+etatB.label+'</b>';
+      html+='<br><span style="font-size:11px;color:#aaa">💡 '+etatB.reco+'</span>';
+    }
+    if(pc&&pc.pret) html+='<br><button class="btn btn-o" style="margin-top:4px" onclick="recolterCulture(\''+pc.id+'\')">Récolter</button>';
+    else html+='<br>Prête sem. '+(pc?pc.tourRecolte:'?');
+  }
+  if(chan){
+    html+='<br><br>🌲 Chantier de défrichage<br>Restant: '+chan.sRestantes+' semaine(s)';
+  }
+  var cap=capaciteFourrageBloc(key);
+  if(cap){
+    var chargeUGB=ugbSurParcelle(label);
+    var pctCharge=cap.capUGB>0?Math.round(chargeUGB/cap.capUGB*100):0;
+    var colCharge=pctCharge<=80?'#7ec850':pctCharge<=105?'#e0a060':'#e06060';
+    html+='<br><br>🌾 Capacité fourragère ('+cap.saison+'): <b>'+cap.capUGB.toFixed(1)+' UGB</b>';
+    html+='<br>Charge actuelle: <b style="color:'+colCharge+'">'+chargeUGB.toFixed(1)+' UGB ('+pctCharge+'%)</b>';
+    if(pctCharge>105) html+='<br><span style="color:#e06060;font-size:11px">⚠️ Surpâturage — risque de dégradation du couvert</span>';
+  }
+  if(animauxIci.length>0){
+    html+='<br><br>🐄 Animaux présents:';
+    animauxIci.forEach(function(l){
+      html+='<br>· '+l.nom+' ('+l.nb+' têtes) <span style="color:#6a9ec0;cursor:pointer;font-size:11px" onclick="renommerLot(\''+l.id+'\')">✎ renommer</span>';
+    });
+  }
+  if(t==='cultivable') html+='<br><br><button class="btn" onclick="setTab(\'parcelles\');setSub(\'parcelles\',\'cultures\')">🌱 Semer ici</button>';
+  if(t==='palmeraie'||t==='foret') html+='<br><br><button class="btn btn-b" onclick="setTab(\'parcelles\');setSub(\'parcelles\',\'defriche\')">🌲 Défricher ici</button>';
+  if(t==='pangola'||t==='pature') html+='<br><br><button class="btn btn-b" onclick="setTab(\'troupeau\');setSub(\'troupeau\',\'lots\')">🐄 Gérer le troupeau</button>';
+  var pnl=document.getElementById('bloc-panel');
+  pnl.innerHTML=html;
+  pnl.style.display='block';
 }
 
-function showTooltip(e,key){
-  // survol léger — pas de tooltip pour ne pas surcharger
+function closeBlocPanel(){
+  var pnl=document.getElementById('bloc-panel');
+  if(pnl)pnl.style.display='none';
 }
-function hideTooltip(){}
 
 // ─── NAVIGATION ─────────────────────────────────────────────────────────────
+var TAB_LABELS={carte:'🗺️ Carte',troupeau:'🐄 Troupeau',parcelles:'🌱 Parcelles',finances:'💰 Finances',meteo:'⛅ Météo',ouvriers:'👷 Ouvriers',machines:'🚜 Matériel',stocks:'📦 Stocks',marche:'📈 Marché',tuto:'❓ Tuto / FAQ'};
+var SUB_LABELS={lots:'Lots',sante:'Santé & GMQ',ventes:'Ventes',etat:'État',defriche:'Défrichage',cultures:'Cultures',tresorerie:'Trésorerie',pl:'P&L',dettes:'Emprunts',investisseurs:'Investisseurs'};
+
+function renderMenuActive(){
+  document.querySelectorAll('.mtab').forEach(function(el){
+    el.classList.toggle('actif',el.id==='tab-'+G.curTab);
+  });
+  document.querySelectorAll('.msub').forEach(function(el){
+    var tab=el.getAttribute('data-tab');
+    var show=(tab===G.curTab);
+    el.style.display=show?'block':'none';
+    el.classList.toggle('actif',show&&el.getAttribute('data-sub')===(G.curSub[tab]||''));
+  });
+}
+
+function updateBreadcrumb(){
+  var b=document.getElementById('breadcrumb');
+  if(!b)return;
+  var sub=G.curSub[G.curTab];
+  var txt=TAB_LABELS[G.curTab]||G.curTab;
+  if(sub&&SUB_LABELS[sub]) txt+=' <span style="color:#555">›</span> '+SUB_LABELS[sub];
+  b.innerHTML=txt;
+}
+
+// ─── MODALE ─────────────────────────────────────────────────────────────────
+function openModal(title,bodyHtml){
+  document.getElementById('modal-title').textContent=title;
+  document.getElementById('modal-body').innerHTML=bodyHtml;
+  document.getElementById('modal-overlay').style.display='flex';
+}
+function closeModal(){
+  document.getElementById('modal-overlay').style.display='none';
+}
+
+// ─── FILTRE CARTE ───────────────────────────────────────────────────────────
+function setMapFiltre(f){
+  G.mapFiltre=f;
+  document.querySelectorAll('.mf-btn').forEach(function(el){el.classList.remove('actif');});
+  var el=document.getElementById('mf-'+f);
+  if(el)el.classList.add('actif');
+  renderCarteMap();
+}
+
 function setTab(t){
   G.curTab=t;
-  document.querySelectorAll('.mtab').forEach(function(el){el.classList.remove('actif');});
-  var el=document.getElementById('tab-'+t);
-  if(el)el.classList.add('actif');
   var cw=document.getElementById('carte-wrap');
-  var panel=document.getElementById('panel');
+  var panelOuter=document.getElementById('panel-outer');
   if(t==='carte'){
     cw.style.display='flex';cw.style.flexDirection='column';
-    panel.style.display='none';
+    panelOuter.style.display='none';
     renderCarteMap();
+    updateSelOverlay();
   } else {
     cw.style.display='none';
-    panel.style.display='block';
+    panelOuter.style.display='block';
     renderPanel();
   }
+  renderMenuActive();
+  updateBreadcrumb();
 }
 
 function setSub(tab,sub){
   if(!G.curSub)G.curSub={};
   G.curSub[tab]=sub;
-  document.querySelectorAll('.msub').forEach(function(el){el.classList.remove('actif');});
+  renderMenuActive();
+  updateBreadcrumb();
   if(G.curTab===tab) renderPanel();
 }
 
 function renderPanel(){
   var p=document.getElementById('panel');
   if(!p)return;
+  updateBreadcrumb();
   var t=G.curTab;
   var sub=G.curSub[t]||'';
   if(t==='troupeau'){
@@ -595,24 +974,47 @@ function renderPanel(){
     p.innerHTML=renderStocks();
   } else if(t==='marche'){
     p.innerHTML=renderMarche();
+  } else if(t==='tuto'){
+    p.innerHTML=renderTuto();
   } else {
     p.innerHTML='<div class="section-title">'+t+'</div><p style="color:#666;font-size:13px">Module en construction...</p>';
   }
 }
 
 // ─── TROUPEAU ────────────────────────────────────────────────────────────────
+function getPatureBlocs(){
+  var arr=[];
+  Object.keys(carteBlocs).forEach(function(k){
+    var t=carteBlocs[k];
+    if(t==='pangola'||t==='pature'){
+      var rc=k.split(',');
+      arr.push({key:k,label:blocLabel(+rc[0],+rc[1])});
+    }
+  });
+  return arr;
+}
+
 function renderLots(){
   var html='<div class="section-title">🐄 Troupeau — Gestion des lots</div>';
-  html+='<div style="margin-bottom:12px;display:flex;gap:8px;align-items:center">';
-  html+='<button class="btn btn-b" onclick="creerLot()">+ Créer un lot</button>';
-  html+='<span style="font-size:12px;color:#888">'+totalUGB()+' UGB total</span>';
+  html+='<div style="margin-bottom:12px;font-size:12px;color:#888">'+totalUGB()+' UGB total · '+G.lots.reduce(function(s,l){return s+l.nb;},0)+' têtes</div>';
+  html+='<div class="card"><div class="card-title">🛒 Acheter du bétail</div>';
+  html+='<div class="form-row"><label>Race</label><select id="ach-race"><option>Brangus F1</option><option>Brangus pur</option><option>Nelore</option></select></div>';
+  html+='<div class="form-row"><label>Nombre de têtes</label><input type="number" id="ach-nb" value="50" min="1" max="500"></div>';
+  html+='<div class="form-row"><label>Poids moyen (kg)</label><input type="number" id="ach-poids" value="220" min="50" max="600"></div>';
+  html+='<div class="form-row"><label>Parcelle d\'accueil</label><select id="ach-parc">';
+  var pastures=getPatureBlocs();
+  if(pastures.length===0) html+='<option value="">Aucune pâture — défrichez d\'abord</option>';
+  pastures.forEach(function(p){html+='<option value="'+p.label+'">'+p.label+' ('+TYPES_BLOCS[carteBlocs[p.key]].label+')</option>';});
+  html+='</select></div>';
+  html+='<div id="ach-cout" style="font-size:12px;color:#e0a060;margin:6px 0"></div>';
+  html+='<button class="btn btn-b" onclick="calcAchatCout()">Calculer</button>';
+  html+='<button class="btn" onclick="acheterBetail()" style="margin-left:8px">Acheter</button>';
   html+='</div>';
   if(G.lots.length===0){
-    html+='<div class="alert y">Aucun lot créé. Achetez du bétail ou créez un lot.</div>';
+    html+='<div class="alert y">Aucun lot. Achetez du bétail ci-dessus pour démarrer.</div>';
     return html;
   }
   G.lots.forEach(function(l){
-    var vel=l.statut==='reproduction'?'Reproduction':'';
     var santeCls=l.sante>=85?'g':l.sante>=70?'y':'r';
     html+='<div class="card"><div class="card-title">'+l.nom+' <span class="tag b">'+l.espece+'</span></div>';
     html+='<table class="gt"><tr>';
@@ -621,7 +1023,7 @@ function renderLots(){
     html+='<td>Poids moy.</td><td>'+l.poids+' kg</td>';
     html+='<td>GMQ</td><td>'+l.gmq.toFixed(2)+' kg/j</td></tr><tr>';
     html+='<td>Santé</td><td><span class="tag '+santeCls+'">'+l.sante+'%</span></td>';
-    html+='<td>Parcelle</td><td>'+l.parcelle+'</td></tr>';
+    html+='<td>📍 Parcelle</td><td><b style="color:#7ec850">'+l.parcelle+'</b></td></tr>';
     if(l.taureaux>0){html+='<tr><td>Taureaux</td><td>'+l.taureaux+'</td><td></td><td></td></tr>';}
     if(l.echoVide>0){html+='<tr><td colspan="4"><span class="tag r">✗ '+l.echoVide+' vaches vides</span></td></tr>';}
     html+='</table>';
@@ -629,11 +1031,135 @@ function renderLots(){
     html+='<button class="btn" onclick="operationLot(\''+l.id+'\',\'iatf\')">IATF</button>';
     html+='<button class="btn" onclick="operationLot(\''+l.id+'\',\'echo\')">Échographie</button>';
     html+='<button class="btn" onclick="operationLot(\''+l.id+'\',\'vacc\')">Vaccination</button>';
+    html+='<button class="btn btn-b" onclick="renommerLot(\''+l.id+'\')">✎ Renommer</button>';
+    html+='<button class="btn btn-b" onclick="deplacerLot(\''+l.id+'\')">📍 Déplacer</button>';
+    html+='<button class="btn btn-b" onclick="diviserLot(\''+l.id+'\')">✂️ Diviser</button>';
     html+='<button class="btn btn-o" onclick="operationLot(\''+l.id+'\',\'vente\')">Vendre</button>';
-    html+='<button class="btn btn-r" onclick="retirerLot(\''+l.id+'\')">Supprimer lot</button>';
+    html+='<button class="btn btn-r" onclick="retirerLot(\''+l.id+'\')">Supprimer</button>';
     html+='</div></div>';
   });
+  if(G.lots.length>=2){
+    html+='<div class="card"><div class="card-title">🔗 Fusionner deux lots</div>';
+    html+='<div class="form-row"><label>Lot A (destination)</label><select id="fus-a">';
+    G.lots.forEach(function(l){html+='<option value="'+l.id+'">'+l.nom+' ('+l.nb+')</option>';});
+    html+='</select></div>';
+    html+='<div class="form-row"><label>Lot B (absorbé)</label><select id="fus-b">';
+    G.lots.forEach(function(l){html+='<option value="'+l.id+'">'+l.nom+' ('+l.nb+')</option>';});
+    html+='</select></div>';
+    html+='<button class="btn btn-b" onclick="fusionnerLots()">Fusionner (A ← B)</button>';
+    html+='</div>';
+  }
   return html;
+}
+
+function calcAchatCout(){
+  var nb=parseInt(document.getElementById('ach-nb').value)||0;
+  var poids=parseInt(document.getElementById('ach-poids').value)||0;
+  var cout=Math.round(nb*poids*P.prixAchatBovin);
+  document.getElementById('ach-cout').textContent='Coût estimé: '+nf(cout)+' $ ('+P.prixAchatBovin+' $/kg vif)';
+}
+
+function acheterBetail(){
+  var race=document.getElementById('ach-race').value;
+  var nb=parseInt(document.getElementById('ach-nb').value)||0;
+  var poids=parseInt(document.getElementById('ach-poids').value)||0;
+  var parc=document.getElementById('ach-parc').value;
+  if(!parc){alert('Sélectionnez une parcelle d\'accueil (défrichez une pâture si besoin)');return;}
+  if(nb<=0){alert('Nombre invalide');return;}
+  var cout=Math.round(nb*poids*P.prixAchatBovin);
+  if(G.tresorerie<cout){alert('Fonds insuffisants ('+nf(cout)+' $ requis)');return;}
+  G.tresorerie-=cout;
+  G.lots.push({id:'L'+Date.now(),nom:race+' S'+G.tour,espece:race,nb:nb,age:14,
+    statut:'elevage',parcelle:parc,poids:poids,gmq:0.6,echoVide:0,sante:90,taureaux:0});
+  addJournal('🛒 Achat '+nb+' '+race+' — '+nf(cout)+' $ — installés en '+parc,'fin');
+  addPLCharge('Achat bétail',cout);
+  renderPanel();updateHeader();
+}
+
+function renommerLot(id){
+  var l=G.lots.find(function(x){return x.id===id;});
+  if(!l)return;
+  var body='<div class="form-row"><label>Nom actuel</label><span>'+l.nom+'</span></div>';
+  body+='<div class="form-row"><label>Nouveau nom</label><input type="text" id="mod-ren-nom" value="'+l.nom+'" maxlength="40"></div>';
+  body+='<button class="btn" onclick="confirmerRenommage(\''+id+'\')">Renommer</button>';
+  body+='<button class="btn btn-r" onclick="closeModal()">Annuler</button>';
+  openModal('✎ Renommer le lot',body);
+}
+function confirmerRenommage(id){
+  var l=G.lots.find(function(x){return x.id===id;});
+  if(!l)return;
+  var nom=(document.getElementById('mod-ren-nom').value||'').trim();
+  if(!nom){alert('Nom invalide');return;}
+  l.nom=nom;
+  closeModal();
+  renderPanel();
+  if(G.curTab==='carte'){closeBlocPanel();}
+}
+function deplacerLot(id){
+  var l=G.lots.find(function(x){return x.id===id;});
+  if(!l)return;
+  var pastures=getPatureBlocs();
+  if(pastures.length===0){alert('Aucune pâture disponible');return;}
+  var body='<div class="form-row"><label>Lot</label><span>'+l.nom+'</span></div>';
+  body+='<div class="form-row"><label>Nouvelle parcelle</label><select id="mod-dep-parc">';
+  pastures.forEach(function(p){body+='<option value="'+p.label+'"'+(p.label===l.parcelle?' selected':'')+'>'+p.label+' ('+TYPES_BLOCS[carteBlocs[p.key]].label+')</option>';});
+  body+='</select></div>';
+  body+='<button class="btn" onclick="confirmerDeplacement(\''+id+'\')">Déplacer</button>';
+  body+='<button class="btn btn-r" onclick="closeModal()">Annuler</button>';
+  openModal('📍 Déplacer un lot',body);
+}
+function confirmerDeplacement(id){
+  var l=G.lots.find(function(x){return x.id===id;});
+  if(!l)return;
+  var parc=document.getElementById('mod-dep-parc').value;
+  l.parcelle=parc;
+  addJournal('📍 Lot "'+l.nom+'" déplacé vers '+parc,'inf');
+  closeModal();
+  renderPanel();
+}
+
+function diviserLot(id){
+  var l=G.lots.find(function(x){return x.id===id;});
+  if(!l)return;
+  if(l.nb<2){alert('Lot trop petit pour être divisé');return;}
+  var body='<div class="form-row"><label>Lot</label><span>'+l.nom+' ('+l.nb+' têtes)</span></div>';
+  body+='<div class="form-row"><label>Têtes à séparer</label><input type="number" id="mod-div-nb" value="'+Math.max(1,Math.floor(l.nb/2))+'" min="1" max="'+(l.nb-1)+'"></div>';
+  body+='<button class="btn" onclick="confirmerDivision(\''+id+'\')">Diviser</button>';
+  body+='<button class="btn btn-r" onclick="closeModal()">Annuler</button>';
+  openModal('✂️ Diviser un lot',body);
+}
+function confirmerDivision(id){
+  var l=G.lots.find(function(x){return x.id===id;});
+  if(!l)return;
+  var nb=parseInt(document.getElementById('mod-div-nb').value)||0;
+  if(nb<=0||nb>=l.nb){alert('Nombre invalide');return;}
+  l.nb-=nb;
+  var nouveau=JSON.parse(JSON.stringify(l));
+  nouveau.id='L'+Date.now();
+  nouveau.nom=l.nom+' (bis)';
+  nouveau.nb=nb;
+  G.lots.push(nouveau);
+  addJournal('✂️ Lot "'+l.nom+'" divisé — '+nb+' têtes → nouveau lot','inf');
+  closeModal();
+  renderPanel();updateHeader();
+}
+
+function fusionnerLots(){
+  var idA=document.getElementById('fus-a').value;
+  var idB=document.getElementById('fus-b').value;
+  if(idA===idB){alert('Choisissez deux lots différents');return;}
+  var a=G.lots.find(function(x){return x.id===idA;});
+  var b=G.lots.find(function(x){return x.id===idB;});
+  if(!a||!b)return;
+  var totalNb=a.nb+b.nb;
+  a.poids=Math.round((a.poids*a.nb+b.poids*b.nb)/totalNb);
+  a.gmq=Math.round(((a.gmq*a.nb+b.gmq*b.nb)/totalNb)*100)/100;
+  a.sante=Math.round((a.sante*a.nb+b.sante*b.nb)/totalNb);
+  a.nb=totalNb;
+  a.echoVide+=b.echoVide;
+  G.lots=G.lots.filter(function(x){return x.id!==b.id;});
+  addJournal('🔗 Lots fusionnés — "'+a.nom+'" compte désormais '+a.nb+' têtes','inf');
+  renderPanel();updateHeader();
 }
 
 function renderSante(){
@@ -668,20 +1194,17 @@ function renderVentes(){
   return html;
 }
 
-function creerLot(){
-  var nom=prompt('Nom du lot:','Nouveau lot');
-  if(!nom)return;
-  var nb=parseInt(prompt('Nombre d\'animaux:','50'));
-  if(!nb||nb<=0)return;
-  G.lots.push({id:'L'+Date.now(),nom:nom,espece:'Brangus F1',nb:nb,age:18,
-    statut:'elevage',parcelle:'Non assigné',poids:250,gmq:0.60,echoVide:0,sante:90,taureaux:0});
-  addJournal('🐄 Lot "'+nom+'" créé — '+nb+' animaux','ev');
-  renderPanel();updateHeader();
-}
-
 function retirerLot(id){
-  if(!confirm('Supprimer ce lot?'))return;
+  var l=G.lots.find(function(x){return x.id===id;});
+  if(!l)return;
+  var body='<p style="font-size:13px;margin-bottom:12px">Supprimer définitivement le lot "'+l.nom+'" ('+l.nb+' têtes) ?<br><span style="color:#e08060">Les animaux ne sont pas vendus — utilisez "Vendre" pour encaisser.</span></p>';
+  body+='<button class="btn btn-r" onclick="confirmerSuppressionLot(\''+id+'\')">Supprimer</button>';
+  body+='<button class="btn" onclick="closeModal()">Annuler</button>';
+  openModal('🗑️ Supprimer le lot',body);
+}
+function confirmerSuppressionLot(id){
   G.lots=G.lots.filter(function(l){return l.id!==id;});
+  closeModal();
   renderPanel();updateHeader();
 }
 
@@ -719,12 +1242,21 @@ function vendreAnimaux(id){
   var l=G.lots.find(function(x){return x.id===id;});
   if(!l)return;
   var val=Math.round(l.nb*l.poids*P.prixBoeuf);
-  if(!confirm('Vendre '+l.nb+' animaux pour ~'+nf(val)+' $ ?'))return;
+  var body='<p style="font-size:13px">Vendre '+l.nb+' têtes ("'+l.nom+'") pour ~<b style="color:#7ec850">'+nf(val)+' $</b> ?</p>';
+  body+='<button class="btn btn-o" onclick="confirmerVente(\''+id+'\')">Vendre</button>';
+  body+='<button class="btn" onclick="closeModal()">Annuler</button>';
+  openModal('💲 Vendre le bétail',body);
+}
+function confirmerVente(id){
+  var l=G.lots.find(function(x){return x.id===id;});
+  if(!l)return;
+  var val=Math.round(l.nb*l.poids*P.prixBoeuf);
   G.tresorerie+=val;
   G.ventes+=val;
   addJournal('💰 Vente bétail lot "'+l.nom+'" — '+nf(val)+' $ encaissés','fin');
   addPLRevenu('Vente bétail',val);
-  G.lots=G.lots.filter(function(x){return x.id!==id;});
+  G.lots=G.lots.filter(function(x){return x.id!==l.id;});
+  closeModal();
   renderPanel();updateHeader();
 }
 
@@ -732,24 +1264,52 @@ function totalUGB(){
   return G.lots.reduce(function(s,l){return s+Math.round(l.nb*(l.poids/450));},0);
 }
 
+// Capacité de charge fourragère théorique d'une parcelle (UGB/ha), ajustée par
+// le type de couvert et la saison (croissance de l'herbe plus faible en hiver/sécheresse).
+function capaciteFourrageBloc(key){
+  var t=carteBlocs[key];
+  var base=t==='pangola'?1.6:(t==='pature'?1.0:0);
+  if(base===0)return null;
+  var d=getDateFromTour(G.tour);
+  var factSaison=1;
+  if(d.saison.indexOf('Hiver')>=0)factSaison=0.65;
+  else if(d.saison.indexOf('Été')>=0)factSaison=1.15;
+  else if(d.saison.indexOf('Printemps')>=0)factSaison=1.05;
+  else factSaison=0.85; // Automne
+  var fert=fertiliteBlocs[key];
+  var factFert=fert!==undefined?Math.max(0.5,fert/100):1;
+  var capUGB=base*HA_PAR_BLOC*factSaison*factFert;
+  return {capUGB:capUGB,factSaison:factSaison,saison:d.saison};
+}
+
+// UGB actuellement présents sur une parcelle donnée (via son label)
+function ugbSurParcelle(label){
+  return G.lots.filter(function(l){return l.parcelle===label;})
+    .reduce(function(s,l){return s+l.nb*(l.poids/450);},0);
+}
+
 // ─── PARCELLES ───────────────────────────────────────────────────────────────
-function countBlocsType(t){
+function countBlocs(t){
   var n=0;
-  Object.values(carteBlocs).forEach(function(v){if(v===t)n++;});
-  return n*25;
+  Object.keys(carteBlocs).forEach(function(k){if(carteBlocs[k]===t)n++;});
+  return n;
+}
+function countBlocsType(t){
+  return Math.round(countBlocs(t)*HA_PAR_BLOC);
 }
 
 function renderParcellesEtat(){
   var html='<div class="section-title">🗺️ État des parcelles</div>';
-  var total=COLS*ROWS*25;
-  var types=['palmeraie','pangola','pature','foret','reserve','defriche','cultivable','en_culture','fleuve','route'];
+  var total=Math.round(FARM_CELL_COUNT*HA_PAR_BLOC);
+  var types=['palmeraie','pangola','pature','foret','reserve','defriche','cultivable','en_culture'];
   html+='<table class="gt"><tr><th>Type</th><th>Blocs</th><th>Surface (ha)</th><th>%</th></tr>';
   types.forEach(function(t){
-    var ha=countBlocsType(t);
-    if(ha===0)return;
+    var n=countBlocs(t);
+    if(n===0)return;
+    var ha=Math.round(n*HA_PAR_BLOC);
     var info=TYPES_BLOCS[t]||{label:t};
     html+='<tr><td><span style="display:inline-block;width:10px;height:10px;background:'+info.couleur+';margin-right:6px;border-radius:2px"></span>'+info.label+'</td>';
-    html+='<td>'+(ha/25)+'</td><td>'+ha+'</td><td>'+(ha/total*100).toFixed(1)+'%</td></tr>';
+    html+='<td>'+n+'</td><td>'+ha+'</td><td>'+(ha/total*100).toFixed(1)+'%</td></tr>';
   });
   html+='</table>';
   html+='<div class="card" style="margin-top:12px"><div class="card-title">Chantiers actifs</div>';
@@ -773,37 +1333,51 @@ function renderDefriche(){
   html+='<div class="form-row"><label>Statut</label><span class="tag '+permitCls+'">'+permitTxt+'</span>';
   if(!G.permisSeam) html+=' <button class="btn btn-b" onclick="obtenirPermis()">Obtenir permis (4 500 $)</button>';
   html+='</div></div>';
-  // Stats
-  var haDefriche=countBlocsType('defriche')+countBlocsType('cultivable')+countBlocsType('en_culture');
-  var haPalm=countBlocsType('palmeraie')+countBlocsType('foret');
-  var haReserve=countBlocsType('reserve');
-  var pctDef=Math.round(haDefriche/(COLS*ROWS*25-haReserve-countBlocsType('fleuve')-countBlocsType('route'))*100)||0;
-  html+='<div class="card"><div class="card-title">Avancement</div>';
-  html+='<div class="form-row"><label>Surface défrichée</label><span style="color:#7ec850">'+haDefriche+' ha</span></div>';
-  html+='<div class="form-row"><label>Restant défrichable</label><span>'+haPalm+' ha</span></div>';
-  html+='<div class="form-row"><label>Réserve légale (25%)</label><span class="tag g">'+haReserve+' ha ✓</span></div>';
-  html+='<div class="form-row"><label>Quota utilisé</label><span class="tag '+(pctDef>70?'r':pctDef>50?'y':'g')+'">'+pctDef+'% / 75%</span></div></div>';
-  // Lancer chantier
-  if(G.permisSeam){
-    html+='<div class="card"><div class="card-title">Lancer un chantier de défrichage</div>';
-    html+='<div id="def-form">';
-    html+='<div class="form-row"><label>Surface (ha, multiple de 25)</label><input type="number" id="def-ha" min="25" max="500" step="25" value="75"></div>';
-    html+='<div class="form-row"><label>Méthode</label><select id="def-meth"><option value="broyeur">Broyeur forestier (315 $/ha)</option><option value="andains">Andains + brûlis (150 $/ha)</option></select></div>';
-    html+='<div class="form-row"><label>Coût estimé</label><span id="def-cout" style="color:#e0a060">—</span></div>';
-    html+='<button class="btn btn-b" onclick="calcDefCout()">Calculer</button>';
-    html+='<button class="btn" onclick="lancerDefriche()" style="margin-left:8px">Lancer le chantier</button>';
-    html+='</div></div>';
+  // Stats — la réserve légale n'est plus un endroit prédéfini : c'est simplement le couvert
+  // forestier (palmeraie + forêt) qu'on choisit de ne PAS défricher. Le jeu impose juste le plancher de 25%.
+  var haCult=countBlocsType('cultivable')+countBlocsType('en_culture');
+  var haPangola=countBlocsType('pangola')+countBlocsType('pature');
+  var haCouvert=countBlocsType('palmeraie')+countBlocsType('foret');
+  var totalFerme=Math.round(FARM_CELL_COUNT*HA_PAR_BLOC);
+  var seuilReserve=Math.round(totalFerme*0.25);
+  var pctCouvert=Math.round(haCouvert/totalFerme*100);
+  html+='<div class="card"><div class="card-title">Occupation du sol</div>';
+  html+='<div class="form-row"><label>Surface totale</label><span>'+totalFerme+' ha</span></div>';
+  html+='<div class="form-row"><label>Cultivable / en culture</label><span style="color:#7ec850">'+haCult+' ha</span></div>';
+  html+='<div class="form-row"><label>Pangola / pâture</label><span style="color:#a0d060">'+haPangola+' ha</span></div>';
+  html+='<div class="form-row"><label>Couvert forestier restant</label><span class="tag '+(pctCouvert<=27?'r':pctCouvert<=35?'y':'g')+'">'+haCouvert+' ha ('+pctCouvert+'%)</span></div>';
+  html+='<div class="form-row"><label>Plancher légal (25%)</label><span style="color:#888">'+seuilReserve+' ha minimum — vous choisissez où</span></div></div>';
+  // Lancer un chantier de conversion
+  html+='<div class="card"><div class="card-title">🌲→🌿 Défricher (palmeraie/forêt)</div>';
+  html+='<div style="font-size:11px;color:#999;margin-bottom:8px">Deux niveaux : léger (pas cher, andains) pour créer du pâturage, ou lourd (broyeur) pour aller direct au cultivable.</div>';
+  if(!G.permisSeam){
+    html+='<button class="btn btn-b" onclick="obtenirPermis()">Obtenir le permis SEAM (4 500 $) — requis pour défricher</button>';
+  } else {
+    html+='<button class="btn" onclick="demarrerSelectionConversion(\'defriche_leger\')">🖊️ Défrichage léger → Pangola ('+CONVERSIONS.defriche_leger.coutHa+' $/ha)</button> ';
+    html+='<button class="btn btn-o" onclick="demarrerSelectionConversion(\'defriche_lourd\')">🖊️ Défrichage lourd → Cultivable ('+CONVERSIONS.defriche_lourd.coutHa+' $/ha)</button>';
   }
+  html+='</div>';
+  html+='<div class="card"><div class="card-title">🌿↔🌾 Convertir des terrains déjà ouverts</div>';
+  html+='<div class="form-row"><label>Pangola → Cultivable</label><span style="color:#888">'+CONVERSIONS.mise_en_culture.coutHa+' $/ha, pas de permis requis (déjà défriché)</span></div>';
+  html+='<button class="btn" onclick="demarrerSelectionConversion(\'mise_en_culture\')">🖊️ Sélectionner du pangola à mettre en culture</button><br><br>';
+  html+='<div class="form-row"><label>Cultivable → Pangola</label><span style="color:#888">'+CONVERSIONS.remise_patures.coutHa+' $/ha, semis d\'herbe rapide</span></div>';
+  html+='<button class="btn" onclick="demarrerSelectionConversion(\'remise_patures\')">🖊️ Sélectionner des cultivables à remettre en pâture</button>';
+  html+='</div>';
   // Historique
   if(G.histDefriche.length>0){
     html+='<div class="card"><div class="card-title">Historique</div>';
-    html+='<table class="gt"><tr><th>Sem.</th><th>Surface</th><th>Méthode</th><th>Coût</th><th>Note</th></tr>';
-    G.histDefriche.slice(-5).forEach(function(h){
-      html+='<tr><td>'+h.tour+'</td><td>'+h.ha+' ha</td><td>'+h.meth+'</td><td>'+nf(h.cout)+' $</td><td>'+(h.note||'?')+'/10</td></tr>';
+    html+='<table class="gt"><tr><th>Sem.</th><th>Surface</th><th>Parcelles</th><th>Type</th><th>Coût</th><th>Note</th></tr>';
+    G.histDefriche.slice(-6).reverse().forEach(function(h){
+      html+='<tr><td>'+h.tour+'</td><td>'+h.ha+' ha</td><td style="font-size:10px;color:#8fa08f">'+(h.blocs||'—')+'</td><td style="font-size:11px">'+h.meth+'</td><td>'+nf(h.cout)+' $</td><td>'+(h.note||'?')+'/10</td></tr>';
     });
     html+='</table></div>';
   }
   return html;
+}
+
+function demarrerSelectionConversion(mode){
+  G.selMode=mode;G.selBlocs=[];
+  setTab('carte');
 }
 
 function obtenirPermis(){
@@ -933,26 +1507,68 @@ function renderCultSemer(){
     html+='<option value="'+k+'">'+(inWindow?'✅':'⏳')+' '+c.nom+' — MB '+c.mbRef+' $/ha</option>';
   });
   html+='</select></div>';
-  html+='<div class="form-row"><label>Surface à semer (ha)</label><input type="number" id="cult-ha" min="25" max="'+haCultivable+'" step="25" value="'+Math.min(75,haCultivable)+'"></div>';
-  html+='<button class="btn" onclick="lancerCulture()">🌱 Semer</button>';
+  html+='<button class="btn" onclick="demarrerSelectionSemis()">🖊️ Sélectionner la zone à semer sur la carte</button>';
   html+='</div>';
   // Cultures en cours
   if(G.parcCultures.length>0){
     html+='<div class="card"><div class="card-title">Cultures en cours</div>';
-    html+='<table class="gt"><tr><th>Culture</th><th>Surface</th><th>Stade</th><th>Semaine récolte</th></tr>';
+    html+='<table class="gt"><tr><th>Culture</th><th>Surface</th><th>Parcelles</th><th>Stade</th><th>État</th><th>Action</th></tr>';
     G.parcCultures.forEach(function(pc){
       var c=CULTURES[pc.culture];
-      var pct=Math.round((pc.duree-pc.sRestantes)/pc.duree*100);
-      var stade=getStade(pct);
+      var pct=pc.pret?100:Math.round((pc.duree-pc.sRestantes)/pc.duree*100);
+      var stade=pc.pret?'🌾 Prêt !':getStade(pct);
+      var labels=pc.blocs.map(function(k){var rc=k.split(',');return blocLabel(+rc[0],+rc[1]);}).join(', ');
+      var etat=getEtatCulture(pc);
       html+='<tr><td>'+(c?c.nom:pc.culture)+'</td><td>'+pc.ha+' ha</td>';
-      html+='<td><span class="tag g">'+stade+'</span></td>';
-      html+='<td>S'+pc.tourRecolte+'</td></tr>';
+      html+='<td style="font-size:10px;color:#8fa08f">'+labels+'</td>';
+      html+='<td><span class="tag '+(pc.pret?'y':'g')+'">'+stade+'</span></td>';
+      html+='<td><span style="color:'+etat.color+';font-size:11px" title="'+etat.reco.replace(/"/g,'')+'">'+etat.label+'</span></td>';
+      if(pc.pret){
+        html+='<td><button class="btn btn-o" onclick="recolterCulture(\''+pc.id+'\')">🌾 Récolter</button>';
+        if(pc.semAttente>0) html+='<br><span style="color:#e08060;font-size:10px">attente '+pc.semAttente+' sem. (-'+Math.min(40,pc.semAttente*3)+'%)</span>';
+        html+='</td>';
+      } else {
+        html+='<td style="font-size:11px;color:#888">prêt sem. '+pc.tourRecolte+'</td>';
+      }
+      html+='</tr>';
     });
     html+='</table></div>';
   }
   return html;
 }
 
+function demarrerSelectionSemis(){
+  var cult=document.getElementById('cult-choix').value;
+  G.selMode='semis';G.selCulture=cult;G.selBlocs=[];
+  setTab('carte');
+}
+
+function recolterCulture(id){
+  var pc=G.parcCultures.find(function(p){return p.id===id;});
+  if(!pc||!pc.pret)return;
+  var c=CULTURES[pc.culture];
+  var perte=Math.min(0.4,(pc.semAttente||0)*0.03);
+  var fertMoy=pc.blocs.reduce(function(s,k){return s+(fertiliteBlocs[k]!==undefined?fertiliteBlocs[k]:100);},0)/pc.blocs.length;
+  var factFert=0.6+0.4*(fertMoy/100);
+  var factEtat=0.55+0.45*((pc.etatSante!==undefined?pc.etatSante:100)/100);
+  var revenu=c?Math.round(pc.ha*c.rendRef*c.prixRef*0.9*(1-perte)*factFert*factEtat):0;
+  G.tresorerie+=revenu;
+  addJournal('🌾 Récolte '+(c?c.nom:pc.culture)+' — '+pc.ha+' ha — '+nf(revenu)+' $'+(perte>0?' (retard -'+Math.round(perte*100)+'%)':'')+' (fertilité moy. '+Math.round(fertMoy)+'%, état '+(pc.etatSante||100)+'%)','ev');
+  addPLRevenu('Récolte '+(c?c.nom:pc.culture),revenu);
+  pc.blocs.forEach(function(k){carteBlocs[k]='cultivable';reduireFertilite(k);});
+  G.parcCultures=G.parcCultures.filter(function(p){return p.id!==id;});
+  renderPanel();updateHeader();
+}
+
+// État sanitaire d'une culture (indépendant du stade de croissance) — combine fertilité du sol
+// et aléas climatiques récents (sécheresse, excès de pluie...), avec une recommandation concrète.
+function getEtatCulture(pc){
+  var e=pc.etatSante!==undefined?pc.etatSante:100;
+  if(e>=85)return {label:'✅ Excellent',color:'#7ec850',reco:'Aucune action requise — conditions favorables.'};
+  if(e>=65)return {label:'🟡 Correct',color:'#c8c850',reco:'Surveiller l\'humidité du sol ; un apport d\'engrais foliaire peut sécuriser le rendement.'};
+  if(e>=45)return {label:'🟠 Sous stress',color:'#e0a060',reco:'Stress hydrique ou nutritionnel probable — envisager irrigation d\'appoint si disponible, ou traitement phyto.'};
+  return {label:'🔴 Critique',color:'#e06060',reco:'Risque élevé de perte de rendement — vérifiez la météo à venir et priorisez cette parcelle pour une intervention.'};
+}
 function getStade(pct){
   if(pct<5)return 'Semis';
   if(pct<20)return 'Levée';
@@ -986,7 +1602,7 @@ function lancerCulture(){
   blocs.forEach(function(k){carteBlocs[k]='en_culture';});
   var tourRecolte=(G.tour+c.duree)%1040+1;
   G.parcCultures.push({id:'PC'+Date.now(),culture:cult,ha:ha,blocs:blocs,
-    duree:c.duree,sRestantes:c.duree,tourSemis:G.tour,tourRecolte:tourRecolte});
+    duree:c.duree,sRestantes:c.duree,tourSemis:G.tour,tourRecolte:tourRecolte,etatSante:100});
   G.tresorerie-=coutSemis;
   addJournal('🌱 Semis '+c.nom+' sur '+ha+' ha — '+nf(coutSemis)+' $ semis','ev');
   addPLCharge('Semis/ITK',coutSemis);
@@ -1149,13 +1765,19 @@ function contracterEmprunt(){
   var dur=parseInt(calc.getAttribute('data-dur'))||260;
   var grace=parseInt(calc.getAttribute('data-grace'))||0;
   var t=parseFloat(calc.getAttribute('data-t'))||8;
-  if(!confirm('Contracter '+nf(mnt)+' $ auprès de '+etab+' ?\nÉchéance: '+nf(ech)+' $/sem après '+Math.round(grace/52)+' ans de différé'))return;
+  var body='<p style="font-size:13px">Contracter <b style="color:#7ec850">'+nf(mnt)+' $</b> auprès de <b>'+etab+'</b> ?<br>Échéance: '+nf(ech)+' $/sem après '+Math.round(grace/52)+' ans de différé.</p>';
+  body+='<button class="btn btn-b" onclick="confirmerEmprunt(\''+etab.replace(/'/g,"\\'")+'\','+mnt+',\''+gar+'\','+ech+','+dur+','+grace+','+t+')">Confirmer</button>';
+  body+='<button class="btn" onclick="closeModal()">Annuler</button>';
+  openModal('🏦 Confirmer l\'emprunt',body);
+}
+function confirmerEmprunt(etab,mnt,gar,ech,dur,grace,t){
   var dette={id:'D'+Date.now(),etablissement:etab,montantInit:mnt,solde:mnt,
     taux:t,durSem:dur,graceSem:grace,graceRestante:grace,
     echeanceHebdo:grace>0?0:ech,echeanceFuture:ech,garantie:gar};
   G.dettes.push(dette);
   G.tresorerie+=mnt;
   addJournal('🏦 Emprunt '+nf(mnt)+' $ — '+etab+' — taux '+t+'%','fin');
+  closeModal();
   renderPanel();updateHeader();
 }
 
@@ -1203,10 +1825,16 @@ function ajouterInvestisseur(){
   var sortie=parseInt(document.getElementById('inv-sortie').value)||10;
   var pctCede=G.investisseurs.reduce(function(s,i){return s+i.parts;},0);
   if(pctCede+parts>51){alert('Impossible de céder plus de 51% des parts');return;}
-  if(!confirm('Accepter '+nf(mnt)+' $ de '+nom+' contre '+parts+'% des parts ?'))return;
+  var body='<p style="font-size:13px">Accepter <b style="color:#7ec850">'+nf(mnt)+' $</b> de <b>'+nom+'</b> contre <b>'+parts+'%</b> des parts ?</p>';
+  body+='<button class="btn btn-b" onclick="confirmerInvestisseur(\''+nom.replace(/'/g,"\\'")+'\','+mnt+','+parts+','+tri+','+sortie+')">Confirmer</button>';
+  body+='<button class="btn" onclick="closeModal()">Annuler</button>';
+  openModal('👥 Confirmer l\'investissement',body);
+}
+function confirmerInvestisseur(nom,mnt,parts,tri,sortie){
   G.investisseurs.push({id:'INV'+Date.now(),nom:nom,montant:mnt,parts:parts,tri:tri,sortie:sortie,tourEntree:G.tour});
   G.tresorerie+=mnt;
   addJournal('👥 Investisseur '+nom+' — '+nf(mnt)+' $ levés contre '+parts+'%','fin');
+  closeModal();
   renderPanel();updateHeader();
 }
 
@@ -1221,12 +1849,14 @@ var METEO_BASE=[
 ];
 
 function renderMeteo(){
-  var moisIdx=Math.floor(((G.tour-1)%52)/(52/12));
+  var dd=getDateFromTour(G.tour);
+  var moisIdx=dd.mois;
   var m=METEO_BASE[moisIdx]||METEO_BASE[0];
   var pluieSem=Math.round((m.pluie/4)*(0.7+Math.random()*0.6));
   var tmax=m.tmax+Math.round((Math.random()-0.5)*4);
   var tmin=m.tmin+Math.round((Math.random()-0.5)*3);
   var html='<div class="section-title">⛅ Météo — Concepción, Paraguay</div>';
+  html+='<div style="font-size:12px;color:#888;margin-bottom:10px">'+dd.jour+' '+dd.moisNom+' An '+dd.annee+' · '+dd.saison+'</div>';
   html+='<div class="fin-kpi">';
   html+=kpi('Pluie semaine',pluieSem+' mm','');
   html+=kpi('T° max',tmax+'°C',tmax>=36?'r':tmax>=33?'y':'');
@@ -1254,40 +1884,103 @@ function renderMeteo(){
 }
 
 // ─── OUVRIERS ─────────────────────────────────────────────────────────────────
+var POSTES_OUVRIERS=[
+  {v:'Gérant résident',s:4000},{v:'Capataz',s:1100},
+  {v:'Péon élevage',s:650},{v:'Péon cultures',s:650},{v:'Mécanicien',s:900}
+];
 function renderOuvriers(){
   var html='<div class="section-title">👷 Ouvriers</div>';
-  html+='<div class="alert y">Module en construction — disponible à l\'Étape 7.</div>';
-  html+='<div class="card"><div class="card-title">Masse salariale estimée</div>';
-  var salaires=[{p:'Gérant résident',n:1,s:4000},{p:'Capataz',n:2,s:1100},{p:'Péon élevage',n:3,s:650},{p:'Péon cultures',n:2,s:650}];
-  var total=0;
-  html+='<table class="gt"><tr><th>Poste</th><th>Nb</th><th>Salaire/mois</th><th>Total/mois</th></tr>';
-  salaires.forEach(function(s){
-    var t=s.n*s.s;total+=t;
-    html+='<tr><td>'+s.p+'</td><td>'+s.n+'</td><td>'+nf(s.s)+' $</td><td>'+nf(t)+' $</td></tr>';
-  });
-  html+='<tr><td colspan="3"><b>TOTAL</b></td><td><b style="color:#7ec850">'+nf(total)+' $/mois</b></td></tr>';
-  html+='</table></div>';
+  var total=G.ouvriers.reduce(function(s,o){return s+o.salaire;},0);
+  html+='<div class="fin-kpi">';
+  html+=kpi('Effectif',G.ouvriers.length+' pers.','');
+  html+=kpi('Masse salariale',nf(total)+' $/mois','y');
+  html+=kpi('Charge hebdo',nf(Math.round(total/4.33))+' $/sem','y');
+  html+='</div>';
+  html+='<div class="card"><div class="card-title">Embaucher</div>';
+  html+='<div class="form-row"><label>Poste</label><select id="ouv-poste">';
+  POSTES_OUVRIERS.forEach(function(p){html+='<option value="'+p.v+'" data-s="'+p.s+'">'+p.v+' — '+nf(p.s)+' $/mois</option>';});
+  html+='</select></div>';
+  html+='<button class="btn btn-b" onclick="embaucherOuvrier()">Embaucher</button></div>';
+  if(G.ouvriers.length>0){
+    html+='<div class="card"><div class="card-title">Équipe actuelle</div>';
+    html+='<table class="gt"><tr><th>Poste</th><th>Salaire/mois</th><th></th></tr>';
+    G.ouvriers.forEach(function(o){
+      html+='<tr><td>'+o.poste+'</td><td>'+nf(o.salaire)+' $</td><td><button class="btn btn-r" onclick="licencierOuvrier(\''+o.id+'\')">Licencier</button></td></tr>';
+    });
+    html+='</table></div>';
+  } else html+='<div class="alert y">Aucun ouvrier embauché — masse salariale = 0 $. La ferme fonctionne toute seule pour l\'instant (simplification).</div>';
   return html;
+}
+function embaucherOuvrier(){
+  var sel=document.getElementById('ouv-poste');
+  var opt=sel.options[sel.selectedIndex];
+  var s=parseInt(opt.getAttribute('data-s'));
+  G.ouvriers.push({id:'O'+Date.now(),poste:sel.value,salaire:s});
+  addJournal('👷 Embauche: '+sel.value+' — '+nf(s)+' $/mois','inf');
+  renderPanel();
+}
+function licencierOuvrier(id){
+  G.ouvriers=G.ouvriers.filter(function(o){return o.id!==id;});
+  addJournal('👷 Licenciement d\'un poste','inf');
+  renderPanel();
 }
 
 // ─── MACHINES ─────────────────────────────────────────────────────────────────
+var CATALOGUE_MACHINES=[
+  {n:'Tracteur NH T7.200 (200ch)',v:180000,cat:'mobile',desc:'Traction générale, travail du sol, pulvérisation'},
+  {n:'Semoir no-till Semeato 17L',v:45000,cat:'mobile',desc:'Semis direct'},
+  {n:'Pulvérisateur Jacto 3000L',v:120000,cat:'mobile',desc:'Traitements phyto'},
+  {n:'Moissonneuse NH CR8.90',v:480000,cat:'mobile',desc:'Récolte grains'},
+  {n:'Broyeur forestier FAE',v:95000,cat:'mobile',desc:'Défrichage lourd — accélère les chantiers de broyage'},
+  {n:'Camion benne 15t',v:150000,cat:'mobile',desc:'Transport intra-ferme / vers silo ou port'},
+  {n:'Camion bétaillère',v:135000,cat:'mobile',desc:'Transport du bétail vers le frigorifico'},
+  {n:'Tajamar (réservoir d\'eau, 2 ha)',v:28000,cat:'infra',desc:'Réserve d\'eau pluviale pour l\'abreuvement et l\'irrigation d\'appoint'},
+  {n:'Abreuvoir automatique (par parcelle)',v:4500,cat:'infra',desc:'Accès à l\'eau pour le bétail — réduit le stress hydrique'},
+  {n:'Silo métallique 500 t',v:65000,cat:'infra',desc:'Stockage grains — limite la dépendance à la vente immédiate'},
+  {n:'Système de contention (corral)',v:22000,cat:'infra',desc:'Manga, couloir de contention — soins, tri, embarquement du bétail'},
+  {n:'Clôture électrique (par parcelle)',v:6000,cat:'infra',desc:'Rotation de pâturage plus fine'}
+];
 function renderMachines(){
-  var html='<div class="section-title">🚜 Machines</div>';
-  html+='<div class="alert y">Module en construction — disponible à l\'Étape 8.</div>';
-  var machines=[
-    {n:'Tracteur NH T7.200 (200ch)',v:180000,etat:85,tache:'Disponible'},
-    {n:'Semoir no-till Semeato 17L',v:45000,etat:90,tache:'Disponible'},
-    {n:'Pulvérisateur Jacto 3000L',v:120000,etat:78,tache:'Disponible'},
-    {n:'Moissonneuse NH CR8.90',v:480000,etat:88,tache:'Disponible'},
-    {n:'Broyeur forestier FAE',v:95000,etat:72,tache:'Disponible'}
-  ];
-  html+='<table class="gt"><tr><th>Machine</th><th>Valeur</th><th>État</th><th>Tâche</th></tr>';
-  machines.forEach(function(m){
-    var ec=m.etat>=80?'g':m.etat>=60?'y':'r';
-    html+='<tr><td>'+m.n+'</td><td>'+nf(m.v)+' $</td><td><span class="tag '+ec+'">'+m.etat+'%</span></td><td>'+m.tache+'</td></tr>';
+  var html='<div class="section-title">🚜 Matériel & Infrastructures</div>';
+  html+='<div class="card"><div class="card-title">🚜 Machines mobiles — Catalogue</div>';
+  html+='<table class="gt"><tr><th>Machine</th><th>Prix</th><th></th></tr>';
+  CATALOGUE_MACHINES.filter(function(m){return m.cat==='mobile';}).forEach(function(m){
+    html+='<tr><td>'+m.n+'<br><span style="font-size:11px;color:#888">'+m.desc+'</span></td><td>'+nf(m.v)+' $</td><td><button class="btn btn-b" onclick="acheterMachine(\''+m.n.replace(/'/g,"\\'")+'\','+m.v+')">Acheter</button></td></tr>';
   });
-  html+='</table>';
+  html+='</table></div>';
+  html+='<div class="card"><div class="card-title">🏗️ Infrastructures fixes — Catalogue</div>';
+  html+='<div style="font-size:11px;color:#999;margin-bottom:8px">Tajamares, abreuvoirs, silos, corrals — équipements posés une fois, qui améliorent durablement la ferme.</div>';
+  html+='<table class="gt"><tr><th>Infrastructure</th><th>Prix</th><th></th></tr>';
+  CATALOGUE_MACHINES.filter(function(m){return m.cat==='infra';}).forEach(function(m){
+    html+='<tr><td>'+m.n+'<br><span style="font-size:11px;color:#888">'+m.desc+'</span></td><td>'+nf(m.v)+' $</td><td><button class="btn btn-o" onclick="acheterMachine(\''+m.n.replace(/'/g,"\\'")+'\','+m.v+')">Acheter</button></td></tr>';
+  });
+  html+='</table></div>';
+  html+='<div class="card"><div class="card-title">Parc possédé</div>';
+  if(G.machines.length===0)html+='<div style="color:#666;font-size:12px">Rien de possédé — les travaux sont sous-traités par défaut (coûts déjà inclus dans les ITK).</div>';
+  else{
+    html+='<table class="gt"><tr><th>Nom</th><th>Valeur</th><th>État</th></tr>';
+    G.machines.forEach(function(m){
+      var ec=m.etat>=80?'g':m.etat>=60?'y':'r';
+      html+='<tr><td>'+m.n+' <span class="tag '+(m.cat==='infra'?'b':'y')+'" style="font-size:9px">'+(m.cat==='infra'?'infra':'machine')+'</span></td><td>'+nf(m.v)+' $</td><td><span class="tag '+ec+'">'+m.etat+'%</span></td></tr>';
+    });
+    html+='</table>';
+  }
+  html+='</div>';
   return html;
+}
+function acheterMachine(n,v){
+  if(G.tresorerie<v){alert('Fonds insuffisants');return;}
+  G.tresorerie-=v;
+  var ref=CATALOGUE_MACHINES.find(function(m){return m.n===n;});
+  var cat=ref?ref.cat:'mobile';
+  G.machines.push({id:'M'+Date.now(),n:n,v:v,etat:100,cat:cat});
+  addJournal((cat==='infra'?'🏗️ Achat infrastructure: ':'🚜 Achat machine: ')+n+' — '+nf(v)+' $','fin');
+  addPLCharge(cat==='infra'?'Achat infrastructure':'Achat machine',v);
+  renderPanel();updateHeader();
+}
+// Compte le nombre de broyeurs forestiers possédés — accélère le défrichage lourd
+function possedeeBroyeur(){
+  return G.machines.some(function(m){return m.n.indexOf('Broyeur forestier')>=0;});
 }
 
 // ─── STOCKS ─────────────────────────────────────────────────────────────────
@@ -1336,6 +2029,26 @@ function renderMarche(){
   return html;
 }
 
+// ─── TUTO / FAQ ─────────────────────────────────────────────────────────────
+function renderTuto(){
+  var html='<div class="section-title">❓ Tuto / FAQ — Comment jouer</div>';
+  var sections=[
+    {t:'🗓️ Le tour de jeu',c:'Chaque semaine de jeu correspond à un "tour". Cliquez sur <b>⏭ Tour suivant</b> en haut à droite pour avancer d\'une semaine — les chantiers avancent, le bétail grandit, les dettes s\'amortissent, les cultures mûrissent. Le bouton <b>⏱ Auto</b> enchaîne les tours automatiquement toutes les X minutes.'},
+    {t:'🗺️ Comprendre la carte',c:'La propriété (7 106 ha) est découpée en parcelles identifiées (A1, C14...). Chaque parcelle appartient à un type : palmeraie/forêt (naturel), réserve légale (protégée, non exploitable), pangola/pâture (élevage), défriché/cultivable (prêt à semer), en culture. Le fleuve et la route sont juste des repères visuels — ils ne comptent pas dans les hectares. Utilisez les boutons <b>État / Cultures / Fertilité</b> en haut à gauche de la carte pour changer d\'affichage. Cliquez une parcelle pour voir sa fiche (état, culture, animaux présents).'},
+    {t:'🌲 Défricher',c:'Dans Parcelles ▸ Défrichage : obtenez le permis SEAM (une fois), choisissez une méthode (broyeur ou andains), puis cliquez "Sélectionner la zone sur la carte" — vous cliquez ensuite directement les parcelles palmeraie/forêt à défricher, puis validez. Le chantier prend plusieurs semaines avant que la parcelle devienne "cultivable".'},
+    {t:'🌾 Semer et récolter',c:'Dans Parcelles ▸ Cultures ▸ Semer : choisissez une culture (✅ = dans la bonne fenêtre de semis, ⏳ = hors saison), puis sélectionnez les parcelles cultivables sur la carte. La culture avance semaine après semaine. Quand elle est <b>"Prête !"</b>, vous devez cliquer <b>🌾 Récolter</b> vous-même (rien n\'est vendu automatiquement) — attendre trop longtemps fait perdre du rendement, et la fertilité du sol de la parcelle baisse un peu à chaque récolte (visible via le filtre Fertilité de la carte).'},
+    {t:'🐄 Gérer le troupeau',c:'Dans Troupeau ▸ Lots : "Acheter du bétail" crée un nouveau lot ET l\'installe sur une parcelle de pâture que vous choisissez. Chaque lot peut être <b>déplacé</b> vers une autre parcelle, <b>divisé</b> en deux, <b>fusionné</b> avec un autre, ou <b>vendu</b>. Un marqueur 🐄 apparaît sur la carte à l\'emplacement réel de chaque lot — cliquez dessus pour voir le détail.'},
+    {t:'💰 Finances',c:'Trésorerie affiche votre cash disponible. P&L montre les revenus/charges de la semaine en cours et l\'historique. Emprunts permet de contracter un prêt (BNF, banques privées, IFC/AFD, microfinance — chacun avec taux, durée et différé différents). Investisseurs permet de lever du capital contre des parts (max 51% cédées).'},
+    {t:'👷 Ouvriers & 🚜 Machines',c:'Ces modules sont optionnels : par défaut, la ferme tourne sans main-d\'œuvre ni machines possédées (les coûts sont déjà inclus dans les ITK des cultures et le prix de la défriche). Embaucher du personnel ou acheter des machines augmente vos charges fixes (salaires mensuels, achat de matériel) — utile pour un futur développement du jeu, mais non indispensable pour progresser aujourd\'hui.'},
+    {t:'🌱 Fertilité des sols',c:'Chaque parcelle agricole a une fertilité (100% au départ). Elle baisse de 8 points à chaque récolte. Une fertilité basse réduit le rendement de la récolte suivante. Utilisez le filtre "Fertilité" sur la carte pour repérer les parcelles fatiguées (rouge = basse, vert = haute).'},
+    {t:'📈 Marché',c:'Les prix (soja, maïs, riz, bœuf...) fluctuent légèrement chaque semaine autour d\'un prix de référence. Ils influencent directement vos revenus de récolte et de vente de bétail.'}
+  ];
+  sections.forEach(function(s){
+    html+='<div class="card"><div class="card-title">'+s.t+'</div><div style="font-size:12px;line-height:1.6;color:#ccc">'+s.c+'</div></div>';
+  });
+  return html;
+}
+
 // ─── JOURNAL ─────────────────────────────────────────────────────────────────
 function addJournal(msg,type){
   var j=document.getElementById('journal');
@@ -1368,38 +2081,52 @@ function passerTour(){
   // Reset P&L semaine
   G.plSemaine={revenus:0,charges:0,resultat:0,items:[]};
   G.tour++;
-  // Avancer chantiers défriche
+  // Avancer chantiers de conversion de terrain
   var chTermines=[];
   G.chantiers.forEach(function(ch){
     if(ch.sRestantes>0){
       ch.sRestantes--;
       if(ch.sRestantes===0){
-        ch.blocs.forEach(function(k){if(carteBlocs[k]==='defriche')carteBlocs[k]='cultivable';});
+        var cible=ch.cibleType||'cultivable';
+        ch.blocs.forEach(function(k){carteBlocs[k]=cible;if(cible==='cultivable'&&fertiliteBlocs[k]===undefined)fertiliteBlocs[k]=100;});
         var note=Math.round(6+Math.random()*3);
         G.histDefriche.forEach(function(h){if(!h.note)h.note=note;});
-        addJournal('✅ Chantier défrichage terminé — '+ch.ha+' ha cultivables (note: '+note+'/10)','ev');
+        addJournal('✅ '+ch.label+' terminé (note: '+note+'/10)','ev');
         chTermines.push(ch.id);
       }
     }
   });
   G.chantiers=G.chantiers.filter(function(ch){return chTermines.indexOf(ch.id)<0;});
-  // Avancer cultures
-  var cultTerminees=[];
+  // Avancer cultures — arrivée à maturité = disponible pour récolte manuelle
   G.parcCultures.forEach(function(pc){
-    if(pc.sRestantes>0){
+    if(pc.pret){
+      pc.semAttente=(pc.semAttente||0)+1;
+    } else if(pc.sRestantes>0){
       pc.sRestantes--;
+      // Aléa climatique hebdomadaire + effet de la fertilité du sol sur l'état sanitaire
+      var fertMoy=pc.blocs.reduce(function(s,k){return s+(fertiliteBlocs[k]!==undefined?fertiliteBlocs[k]:100);},0)/pc.blocs.length;
+      var e=pc.etatSante!==undefined?pc.etatSante:100;
+      var choc=(Math.random()-0.52)*10; // légère dérive négative en moyenne (aléas > bonnes surprises)
+      var effetFert=(fertMoy-70)*0.05; // sol pauvre pénalise, sol riche aide légèrement
+      e=Math.max(20,Math.min(100,e+choc+effetFert));
+      pc.etatSante=Math.round(e);
       if(pc.sRestantes===0){
+        pc.pret=true;
+        pc.semAttente=0;
         var c=CULTURES[pc.culture];
-        var revenu=c?Math.round(pc.ha*c.rendRef*c.prixRef*0.9):0;
-        G.tresorerie+=revenu;
-        addJournal('🌾 Récolte '+( c?c.nom:pc.culture)+' — '+pc.ha+' ha — '+nf(revenu)+' $','ev');
-        addPLRevenu('Récolte '+(c?c.nom:pc.culture),revenu);
-        pc.blocs.forEach(function(k){carteBlocs[k]='cultivable';});
-        cultTerminees.push(pc.id);
+        addJournal('🌾 '+(c?c.nom:pc.culture)+' prête à récolter sur '+pc.ha+' ha — à récolter dans Parcelles ▸ Cultures','ev');
       }
     }
   });
-  G.parcCultures=G.parcCultures.filter(function(pc){return cultTerminees.indexOf(pc.id)<0;});
+  // Ouvriers — masse salariale hebdomadaire
+  var masseSal=G.ouvriers.reduce(function(s,o){return s+o.salaire;},0);
+  if(masseSal>0){
+    var salHebdo=Math.round(masseSal/4.33);
+    G.tresorerie-=salHebdo;
+    addPLCharge('Salaires',salHebdo);
+  }
+  // Machines — usure légère
+  G.machines.forEach(function(m){m.etat=Math.max(20,Math.round((m.etat-0.2)*10)/10);});
   // GMQ troupeau
   G.lots.forEach(function(l){
     l.poids=Math.round(l.poids+l.gmq*7);
@@ -1419,10 +2146,8 @@ function passerTour(){
     G.tresorerie-=chargesDette;
     addPLCharge('Remboursement dettes',chargesDette);
   }
-  // Fluctuation marchés (légère)
-  P.prixSoja=Math.round(355*(0.96+Math.random()*0.08)*10)/10;
-  P.prixMais=Math.round(160*(0.95+Math.random()*0.10)*10)/10;
-  P.prixBoeuf=Math.round(2.0*(0.97+Math.random()*0.06)*100)/100;
+  // Fluctuation marchés — marche aléatoire avec tendance qui dérive + chocs occasionnels (plus réaliste qu'un simple bruit hebdo)
+  fluctuerMarche();
   updateHeader();
   if(G.curTab==='carte') renderCarteMap();
   else renderPanel();
@@ -1439,19 +2164,48 @@ function toggleAuto(){
     document.getElementById('btn-auto').textContent='⏱ Auto';
     document.getElementById('btn-auto').classList.remove('actif');
   } else {
-    var mins=prompt('Intervalle automatique (minutes):','5');
-    if(!mins)return;
-    var dur=parseFloat(mins)*60000;
-    if(isNaN(dur)||dur<10000)dur=60000;
-    G.autoR=true;
-    G.autoDur=dur;
-    document.getElementById('btn-auto').textContent='⏸ Pause auto';
-    document.getElementById('btn-auto').classList.add('actif');
-    G.autoTimer=setInterval(function(){
-      if(!G.autoPause) passerTour();
-    },dur);
-    document.getElementById('auto-info').textContent='Tour auto toutes les '+Math.round(dur/60000)+' min';
+    var body='<div class="form-row"><label>Intervalle (minutes)</label><input type="number" id="mod-auto-min" value="5" min="1" max="60"></div>';
+    body+='<button class="btn" onclick="confirmerAuto()">Démarrer</button>';
+    body+='<button class="btn" onclick="closeModal()">Annuler</button>';
+    openModal('⏱ Tours automatiques',body);
   }
+}
+function confirmerAuto(){
+  var mins=parseFloat(document.getElementById('mod-auto-min').value)||5;
+  var dur=mins*60000;
+  if(isNaN(dur)||dur<10000)dur=60000;
+  G.autoR=true;
+  G.autoDur=dur;
+  document.getElementById('btn-auto').textContent='⏸ Pause auto';
+  document.getElementById('btn-auto').classList.add('actif');
+  G.autoTimer=setInterval(function(){
+    if(!G.autoPause) passerTour();
+  },dur);
+  document.getElementById('auto-info').textContent='Tour auto toutes les '+Math.round(dur/60000)+' min';
+  closeModal();
+}
+
+// ─── CALENDRIER ─────────────────────────────────────────────────────────────
+var MOIS_NOMS=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+var JOURS_PAR_MOIS=[31,28,31,30,31,30,31,31,30,31,30,31];
+function getDateFromTour(tour){
+  var semAn=(tour-1)%52;
+  var jourAnnee=semAn*7+1;
+  var annee=Math.ceil(tour/52);
+  var cum=0,mois=0;
+  for(var i=0;i<12;i++){
+    if(jourAnnee<=cum+JOURS_PAR_MOIS[i]){mois=i;break;}
+    cum+=JOURS_PAR_MOIS[i];
+  }
+  var jour=jourAnnee-cum;
+  return {jour:jour,mois:mois,moisNom:MOIS_NOMS[mois],annee:annee,saison:getSaison(mois)};
+}
+function getSaison(moisIdx){
+  // Hémisphère sud (Chaco paraguayen)
+  if(moisIdx===11||moisIdx===0||moisIdx===1)return '☀️ Été';
+  if(moisIdx>=2&&moisIdx<=4)return '🍂 Automne';
+  if(moisIdx>=5&&moisIdx<=7)return '❄️ Hiver';
+  return '🌸 Printemps';
 }
 
 // ─── UTILS ───────────────────────────────────────────────────────────────────
@@ -1461,18 +2215,25 @@ function nf(n){
 }
 
 function updateHeader(){
-  var an=Math.ceil(G.tour/52);
   document.getElementById('h-tour').textContent=G.tour;
-  document.getElementById('h-an').textContent=an;
+  var d=getDateFromTour(G.tour);
+  document.getElementById('h-date').textContent=d.jour+' '+d.moisNom+' An '+d.annee+' · '+d.saison;
   document.getElementById('h-cash').textContent=nf(G.tresorerie);
   var ugb=totalUGB();
   document.getElementById('h-ugb').textContent=ugb;
   var haCult=G.parcCultures.reduce(function(s,p){return s+p.ha;},0);
   var haDef=countBlocsType('defriche')+countBlocsType('cultivable')+haCult;
+  var haPangola=countBlocsType('pangola')+countBlocsType('pature');
+  var haCouvert=countBlocsType('palmeraie')+countBlocsType('foret');
+  var totalFerme=Math.round(FARM_CELL_COUNT*HA_PAR_BLOC);
+  var pctCouvert=Math.round(haCouvert/totalFerme*100);
   document.getElementById('h-ha-cult').textContent=haCult;
   document.getElementById('h-ha-def').textContent=haDef;
+  document.getElementById('sb-total').textContent=nf(totalFerme)+' ha';
   document.getElementById('sb-def').textContent=haDef+' ha';
+  document.getElementById('sb-pangola').textContent=haPangola+' ha';
   document.getElementById('sb-cult').textContent=haCult+' ha';
+  document.getElementById('sb-couvert').textContent=haCouvert+' ha ('+pctCouvert+'%)';
   document.getElementById('sb-chep').textContent=ugb+' UGB';
   // Alerte tréso
   var cashEl=document.getElementById('h-cash');
@@ -1482,6 +2243,11 @@ function updateHeader(){
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 (function(){
   G.lots=JSON.parse(JSON.stringify(LOTS_INIT));
+  // Assigne les lots aux vraies parcelles pâture/pangola de la carte
+  var pastures=getPatureBlocs();
+  G.lots.forEach(function(l,i){
+    if(pastures.length>0) l.parcelle=pastures[i%pastures.length].label;
+  });
   G.plSemaine={revenus:0,charges:0,resultat:0,items:[]};
   // Dette initiale de démarrage (exemple)
   G.dettes=[{
@@ -1493,7 +2259,7 @@ function updateHeader(){
   updateHeader();
   setTab('carte');
   addJournal('🏦 Financement initial: 3 000 000 $ BNF Ganadero — différé 3 ans','fin');
-  addJournal('🌿 Bienvenue dans Chaco Verde v41 — 7 106 ha, Departamento Presidente Hayes','ev');
+  addJournal('🌿 Bienvenue dans Chaco Verde v43 — 7 106 ha, Departamento Presidente Hayes (300 parcelles ≈23,7 ha)','ev');
 })();
 </script>
 </body>
