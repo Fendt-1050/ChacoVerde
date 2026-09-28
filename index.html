@@ -444,7 +444,148 @@ var P={
   catColor:{vache_a:'#b06828',vache_b:'#a06020',taureau:'#7a4018',genisse1:'#b49028',genisse2:'#a48020',taurillon:'#5a8a5a',veau_a:'#8a6818',veau_b:'#7a5810'},
   chargeMax:1.8,haPangola:450
 };
-var G={tour:1,lots:[],taureaux:[],revenus:0,ventes:0,autoR:false,autoPause:false,autoElap:0,autoStart:0,autoDur:0,autoTimer:null,jTitle:'',jContent:'',curTab:'troupeau',curSub:'lots',tri:'nom',filtre:'',chantiers:[],permisSeam:false,blocsSel:[],histDefriche:[]};
+var G={tour:1,lots:[],taureaux:[],revenus:0,ventes:0,autoR:false,autoPause:false,autoElap:0,autoStart:0,autoDur:0,autoTimer:null,jTitle:'',jContent:'',curTab:'troupeau',curSub:'lots',tri:'nom',filtre:'',chantiers:[],permisSeam:false,blocsSel:[],histDefriche:[],parcCultures:[]};
+
+// ═══════════════════════════════════════════════════════════
+// DONNÉES CULTURES — SOURCE: Agro_Concepcion_v4.xlsx
+// ═══════════════════════════════════════════════════════════
+var CULTURES = {
+  soja_s1: {
+    id:'soja_s1', label:'🌿 Soja S1', culture:'soja', saison:'S1',
+    semisDebut:40, semisFin:47, recolteSem:6, duree:105,
+    rendRef:3.0, prixRef:400, transport:15,
+    coutITK:290, mbRef:865, mnRef:830,
+    couleur:'#c8e870',
+    desc:'Oct–Fév · 3.0 t/ha · MB 865 $/ha',
+    risque:'Rouille asiatique R1-R5 — 2 fongicides obligatoires',
+    phases:[
+      {op:'Dessication J-15',intrant:'Glyphosate 3L/ha',cout:19.62},
+      {op:'Semis direct + inoculant',intrant:'Semences 55 kg/ha + MAP + KCl',cout:173.8},
+      {op:'Herbicide post V2-V3',intrant:'Imazethapyr 0.8L/ha',cout:26.12},
+      {op:'Fongicide F1 rouille R1',intrant:'Carbendazim+Epoxiconazole 0.5L/ha',cout:9.72},
+      {op:'Insecticide I1 R1-R2',intrant:'Lambda-cyhalothrin 0.3L/ha',cout:6.27},
+      {op:'Fongicide F2 rouille R3 ⭐',intrant:'Propiconazole 0.6L/ha',cout:9.42},
+      {op:'Insecticide I2 punaises R5 ⭐',intrant:'Thiamethoxam+Lambda 0.2L/ha',cout:10.12},
+      {op:'Récolte mécanisée',intrant:'Moissonneuse — 13% HR',cout:24.8}
+    ]
+  },
+  soja_s2: {
+    id:'soja_s2', label:'🌿 Soja S2 tardif', culture:'soja', saison:'S2',
+    semisDebut:6, semisFin:14, recolteSem:24, duree:100,
+    rendRef:2.2, prixRef:400, transport:15,
+    coutITK:234, mbRef:613, mnRef:578,
+    couleur:'#a8c850',
+    desc:'Fév–Jun · 2.2 t/ha · MB 613 $/ha',
+    risque:'⚠️ Sécheresse Mai-Jun — rendement -25-40% vs S1',
+    phases:[
+      {op:'Dessication après précédent',intrant:'Glyphosate 2.5L/ha',cout:17.05},
+      {op:'Semis direct variété courte',intrant:'Semences 55 kg/ha groupe V + MAP + KCl',cout:151.48},
+      {op:'Herbicide post V2-V3',intrant:'Imazethapyr 0.8L/ha',cout:25.8},
+      {op:'Fongicide si HR>70%',intrant:'Carbendazim+Epoxiconazole 0.5L/ha',cout:9.4},
+      {op:'Insecticide R3-R5',intrant:'Lambda-cyhalothrin 0.3L/ha',cout:5.95},
+      {op:'Récolte Mai-Juin',intrant:'Moissonneuse — grain souvent sec',cout:24.8}
+    ]
+  },
+  mais_s1: {
+    id:'mais_s1', label:'🌽 Maïs plein cycle S1', culture:'mais', saison:'S1',
+    semisDebut:44, semisFin:48, recolteSem:17, duree:150,
+    rendRef:6.0, prixRef:165, transport:15,
+    coutITK:490, mbRef:410, mnRef:375,
+    couleur:'#f0d040',
+    desc:'Nov–Mai · 6.0 t/ha · MB 410 $/ha',
+    risque:'Spodoptera frugiperda dès V4 — insecticide obligatoire',
+    phases:[
+      {op:'Dessication totale',intrant:'Glyphosate 3L/ha',cout:19.62},
+      {op:'Semis direct plein cycle 115-125j',intrant:'Maïs hybride 1.1 unité/ha + NPK 350kg/ha',cout:300.52},
+      {op:'Herbicide pré-levée J+2',intrant:'Atrazine 3L/ha',cout:17.8},
+      {op:'Herbicide post V3-V4',intrant:'Atrazine 1.5L/ha',cout:10.6},
+      {op:'Couverture N V4-V6',intrant:'Urée 150 kg/ha',cout:83.88},
+      {op:'Fongicide VT-R1',intrant:'Azoxystrobin+Propiconazole 0.8L/ha',cout:18.12},
+      {op:'Insecticide Spodoptera V4-VT ⭐',intrant:'Acéphate 0.5 kg/ha',cout:7.22},
+      {op:'Récolte Avr-Mai',intrant:'Moissonneuse — 14-16% HR',cout:25.6}
+    ]
+  },
+  mais_s2: {
+    id:'mais_s2', label:'🌽 Maïs safrinha S2', culture:'mais', saison:'S2',
+    semisDebut:6, semisFin:11, recolteSem:27, duree:110,
+    rendRef:4.5, prixRef:165, transport:15,
+    coutITK:307, mbRef:368, mnRef:333,
+    couleur:'#e0c030',
+    desc:'Fév–Juil · 4.5 t/ha · MB 368 $/ha',
+    risque:'⚠️ Fenêtre STRICTE avant 15 Mars — sécheresse grain Mai-Jun',
+    phases:[
+      {op:'Semis IMMÉDIAT après soja S1 ⭐',intrant:'Maïs hybride PRÉCOCE 95-105j + NPK 180kg/ha',cout:196.68},
+      {op:'Herbicide post V3-V4',intrant:'Atrazine 2L/ha',cout:13.0},
+      {op:'Couverture N V4 réduite',intrant:'Urée 100 kg/ha',cout:57.4},
+      {op:'Fongicide si HR>70%',intrant:'Propiconazole 0.5L/ha',cout:8.15},
+      {op:'Insecticide Spodoptera ⭐',intrant:'Acéphate 0.4 kg/ha',cout:6.52},
+      {op:'Récolte Juin-Juil',intrant:'Grain souvent sec naturellement',cout:25.6}
+    ]
+  },
+  sorgho_s1: {
+    id:'sorgho_s1', label:'🌾 Sorgho S1', culture:'sorgho', saison:'S1',
+    semisDebut:44, semisFin:52, recolteSem:14, duree:110,
+    rendRef:5.0, prixRef:145, transport:15,
+    coutITK:284, mbRef:191, mnRef:156,
+    couleur:'#d4a840',
+    desc:'Nov–Mar · 5.0 t/ha · MB 191 $/ha',
+    risque:'Quelea (oiseaux granivores) Chaco — surveillance intensive R1-R3',
+    phases:[
+      {op:'Dessication totale',intrant:'Glyphosate 2.5L/ha',cout:17.05},
+      {op:'Semis direct S1',intrant:'Sorgho hybride tanin 6kg/ha + NPK 200kg/ha',cout:142.6},
+      {op:'Herbicide post V3-V4',intrant:'Atrazine 2L/ha (dose réduite)',cout:13.0},
+      {op:'Couverture N V5-V6',intrant:'Urée 100 kg/ha',cout:57.4},
+      {op:'Insecticide mouche du sorgho',intrant:'Lambda-cyhalothrin 0.3L/ha',cout:6.27},
+      {op:'⚠️ Surveillance oiseaux Quelea',intrant:'Effaroucheurs + Lambda 0.2L/ha',cout:25.7},
+      {op:'Récolte mécanisée',intrant:'Moissonneuse table modifiée — <14% HR',cout:22.4}
+    ]
+  },
+  sorgho_s2: {
+    id:'sorgho_s2', label:'🌾 Sorgho safrinha S2', culture:'sorgho', saison:'S2',
+    semisDebut:6, semisFin:14, recolteSem:27, duree:95,
+    rendRef:4.0, prixRef:145, transport:15,
+    coutITK:218, mbRef:157, mnRef:122,
+    couleur:'#c4983a',
+    desc:'Fév–Juil · 4.0 t/ha · MB 157 $/ha · ⭐ Alternative maïs tardif',
+    risque:'⭐ Meilleure option si semis après 15 Mars — tolérance sécheresse ++',
+    phases:[
+      {op:'Semis après soja S1 ⭐',intrant:'Sorgho hybride précoce 90-100j + NPK 150kg/ha',cout:101.32},
+      {op:'Herbicide post V3-V4',intrant:'Atrazine 1.5L/ha réduit',cout:10.6},
+      {op:'Couverture N légère V5',intrant:'Urée 80 kg/ha',cout:46.52},
+      {op:'Insecticide mouche montaison',intrant:'Lambda-cyhalothrin 0.3L/ha',cout:5.95},
+      {op:'Récolte Juin-Juillet',intrant:'Grain sec naturellement — bon précédent',cout:21.6}
+    ]
+  },
+  riz_irrigue: {
+    id:'riz_irrigue', label:'💧 Riz irrigué', culture:'riz', saison:'S1',
+    semisDebut:48, semisFin:4, recolteSem:14, duree:115,
+    rendRef:7.0, prixRef:250, transport:15,
+    coutITK:470, mbRef:1285, mnRef:1250,
+    couleur:'#78c8f0',
+    desc:'Déc–Avr · 7.0 t/ha · MB 1 285 $/ha · 🏆 PLUS RENTABLE',
+    risque:'Blast (Pyricularia) — Tricyclazole OBLIGATOIRE. Zones riveraines <73m NGM uniquement',
+    phases:[
+      {op:'Nivellement laser ±2cm (CAPEX)',intrant:'CAPEX 550$/ha — amort 27.5$/ha/an',cout:27.5},
+      {op:'Semis direct inondé',intrant:'Riz certifié IRGA 424 — 130kg/ha',cout:182},
+      {op:'Réseau irrigation pompage fleuve',intrant:'CAPEX 700$/ha — amort 49$/ha/an',cout:49},
+      {op:'Herbicide riz Propanil post-levée',intrant:'Propanil 36% 3L/ha',cout:24.6},
+      {op:'Engrais N fractionnés (tallage + épiage)',intrant:'Sulfate ammonium 150kg/ha',cout:54},
+      {op:'Fongicide Blast ⭐ OBLIGATOIRE',intrant:'Tricyclazole 75% 0.5kg/ha',cout:14},
+      {op:'Insecticide punaises de riz',intrant:'Chlorpyrifos 0.5L/ha',cout:6.35},
+      {op:'Récolte mécanisée chenilles',intrant:'Moissonneuse riz — 14% HR',cout:35}
+    ]
+  }
+};
+
+// Combinaisons double culture
+var COMBOS = {
+  'soja_s1+mais_s2':  {label:'🌿+🌽 Soja S1 → Maïs safrinha',  mb:1233, mn:1163, note:'Combo star — MB cumulé 1 233 $/ha', couleur:'#a8d870'},
+  'soja_s1+sorgho_s2':{label:'🌿+🌾 Soja S1 → Sorgho safrinha',mb:1022, mn: 952, note:'Alternative si semis maïs >15 Mars',  couleur:'#b8c860'},
+  'soja_s1':          {label:'🌿 Soja S1 simple',               mb: 865, mn: 830, note:'Culture de base — faibles intrants',    couleur:'#c8e870'},
+  'riz_irrigue':      {label:'💧 Riz irrigué seul',             mb:1285, mn:1250, note:'🏆 La plus rentable — zones riveraines', couleur:'#78c8f0'},
+  'mais_s1':          {label:'🌽 Maïs plein cycle S1',          mb: 410, mn: 375, note:'Forte fertilisation — cycle 150j',      couleur:'#f0d040'},
+  'sorgho_s1':        {label:'🌾 Sorgho S1',                    mb: 191, mn: 156, note:'Robuste — surveillance oiseaux',        couleur:'#d4a840'}
+};
 var idC=1;function nid(){return 'L'+(idC++);}function ntid(){return 'T'+(idC++);}
 function sw(t){return ((t-1)%52)+1;}function an(t){return Math.ceil(t/52);}
 var MOIS=['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
@@ -666,6 +807,7 @@ function renderPanel(){
   else if(G.curTab==='parcelles'){
     if(G.curSub==='global')p.innerHTML=renderParcellesGlobal();
     else if(G.curSub==='defriche')p.innerHTML=renderDefriche();
+    else if(G.curSub==='cultures')p.innerHTML=renderCultures();
     else p.innerHTML='<div class="empty">Module à venir — '+G.curSub+'</div>';
   }
   else{p.innerHTML='<div class="empty">Module à venir — '+G.curTab+'</div>';}
@@ -702,7 +844,7 @@ function renderLots(){
     var vel=l.saillieDebut?calcVelage(l.saillieDebut,l.saillieFin):null;
     var col=P.catColor[l.cat]||'#b06828';
     h+='<div class="lot-card" style="border-left-color:'+col+'"><div class="lh"><span class="ln">'+l.nom+'</span><span class="lq">'+l.qty+'</span></div>'+
-      '<div class="lm"><span class="tag">'+P.catLabel[l.cat]+'</span><span class="tag i">'+l.parcelle+'</span>'+(tau?'<span class="tag ok">🐂 '+tau.nom+'</span>':'<span class="tag">sans taureau</span>')+'<span class="tag">'+(l.poids||'—')+' kg</span>'+(l.echoPleine>0?'<span class="tag ok">✓ '+l.echoPleine+' pleines</span>':'')+(l.echoVide>0?'<span class="tag w">✗ '+l.echoVide+' vides</span>')+(vel?'<span class="tag ok">vêlage '+swLabel(vel)+'</span>':'<span class="tag">vêlage non planifié</span>')+'</div>'+
+      '<div class="lm"><span class="tag">'+P.catLabel[l.cat]+'</span><span class="tag i">'+l.parcelle+'</span>'+(tau?'<span class="tag ok">🐂 '+tau.nom+'</span>':'<span class="tag">sans taureau</span>')+'<span class="tag">'+(l.poids||'—')+' kg</span>'+(l.echoPleine>0?'<span class="tag ok">✓ '+l.echoPleine+' pleines</span>':'')+(l.echoVide>0?'<span class="tag w">✗ '+l.echoVide+' vides</span>':'')+(vel?'<span class="tag ok">vêlage '+swLabel(vel)+'</span>':'<span class="tag">vêlage non planifié</span>')+'</div>'+
       '<div class="la-row"><button class="la" onclick="openMove(\''+l.id+'\')">↗ Déplacer</button><button class="la" onclick="openSplit(\''+l.id+'\')">⊘ Scinder</button><button class="la r" onclick="openSell(\''+l.id+'\')">🥩 Vendre</button><button class="la" onclick="doEcho(\''+l.id+'\')">🔬 Écho</button><button class="la r" onclick="delLot(\''+l.id+'\')">🗑</button></div></div>';
   });
   if(chargeAct()>P.chargeMax)h+='<div class="alerte">⚠ Surcharge : '+chargeAct()+' UGB/ha (max '+P.chargeMax+' Pangola)</div>';
@@ -1080,6 +1222,237 @@ document.getElementById('bn').onclick=function(){nextTour();};
 document.getElementById('ba').onclick=function(){if(G.autoR)stopAuto();else{G.autoElap=0;startAuto();}};
 document.getElementById('bp').onclick=function(){if(G.autoR){G.autoElap=Date.now()-G.autoStart;G.autoR=false;if(G.autoTimer)clearTimeout(G.autoTimer);document.getElementById('bp').textContent='▶';G.autoPause=true;}else if(G.autoPause){G.autoPause=false;G.autoR=true;G.autoStart=Date.now()-G.autoElap;document.getElementById('bp').textContent='⏸';tick();}};
 document.getElementById('bj').onclick=function(){var j=document.getElementById('journal');if(j.style.display==='none'||!j.style.display){j.style.display='block';document.getElementById('jt').textContent=G.jTitle;document.getElementById('jb').innerHTML=G.jContent;}else j.style.display='none';};
+
+// ═══════════════════════════════════════════════════════════
+// MODULE CULTURES
+// ═══════════════════════════════════════════════════════════
+var cultView='combos'; // combos | detail | semer
+var cultSel=null;      // culture sélectionnée pour détail/semis
+
+function renderCultures(){
+  // Surface cultivable disponible
+  var haCult=G.chantiers.filter(function(c){return c.etat==='cultivable';}).length*25;
+  var haEnCours=G.parcCultures.reduce(function(s,p){return s+p.ha;},0);
+  var haDispo=haCult-haEnCours;
+
+  var html='<div style="padding:12px;">';
+
+  // ── Barre résumé ──
+  html+='<div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;">';
+  html+='<div style="background:#1a2a1a;border:1px solid #2a4a2a;border-radius:8px;padding:10px 16px;flex:1;min-width:120px;">';
+  html+='<div style="font-size:11px;color:#6a9a6a;">SURFACE CULTIVABLE</div>';
+  html+='<div style="font-size:22px;font-weight:bold;color:#78c878;">'+haCult+' ha</div></div>';
+  html+='<div style="background:#1a2a1a;border:1px solid #2a4a2a;border-radius:8px;padding:10px 16px;flex:1;min-width:120px;">';
+  html+='<div style="font-size:11px;color:#6a9a6a;">EN CULTURE</div>';
+  html+='<div style="font-size:22px;font-weight:bold;color:#e8a030;">'+haEnCours+' ha</div></div>';
+  html+='<div style="background:#1a2a1a;border:1px solid #2a4a2a;border-radius:8px;padding:10px 16px;flex:1;min-width:120px;">';
+  html+='<div style="font-size:11px;color:#6a9a6a;">DISPONIBLE</div>';
+  html+='<div style="font-size:22px;font-weight:bold;color:'+(haDispo>0?'#78c878':'#e85030')+'">'+(haDispo>0?haDispo:'0')+' ha</div></div>';
+  html+='</div>';
+
+  if(haCult===0){
+    html+='<div style="background:#1a1a2a;border:1px solid #3a3a5a;border-radius:8px;padding:20px;text-align:center;color:#8080a0;">';
+    html+='🚜 Aucune surface cultivable disponible<br><small>Défrichez d\'abord des parcelles dans l\'onglet Défrichage</small></div>';
+    html+='</div>';return html;
+  }
+
+  // ── Onglets vue ──
+  html+='<div style="display:flex;gap:6px;margin-bottom:14px;">';
+  ['combos','detail','semer'].forEach(function(v){
+    var labels={combos:'📊 Systèmes de culture',detail:'🔬 Détail ITK',semer:'🌱 Semer une culture'};
+    html+='<button onclick="cultView=\''+v+'\';document.getElementById(\'panel\').innerHTML=renderCultures();" ';
+    html+='style="padding:6px 12px;border-radius:6px;border:1px solid '+(cultView===v?'#5a9a5a':'#2a3a2a')+';';
+    html+='background:'+(cultView===v?'#2a4a2a':'#1a2a1a')+';color:'+(cultView===v?'#78c878':'#8a9a8a')+';cursor:pointer;font-size:12px;">';
+    html+=labels[v]+'</button>';
+  });
+  html+='</div>';
+
+  // ── VUE COMBOS ──
+  if(cultView==='combos'){
+    html+='<div style="margin-bottom:10px;color:#8a9a8a;font-size:12px;">Marges de référence — Source : Agro_Concepcion_v4.xlsx</div>';
+    html+='<div style="display:flex;flex-direction:column;gap:8px;">';
+    Object.values(COMBOS).sort(function(a,b){return b.mb-a.mb;}).forEach(function(c){
+      var pct=Math.round(c.mb/1285*100);
+      html+='<div style="background:#1a2a1a;border:1px solid #2a3a2a;border-radius:8px;padding:12px;cursor:pointer;" ';
+      html+='onclick="cultView=\'detail\';cultSel=\''+c.label.replace(/[^a-zA-Z0-9]/g,'').substring(0,20)+'\';document.getElementById(\'panel\').innerHTML=renderCultures();">';
+      html+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">';
+      html+='<span style="font-weight:bold;color:#c8e8c8;">'+c.label+'</span>';
+      html+='<span style="font-size:18px;font-weight:bold;color:'+c.couleur+';">'+c.mb.toLocaleString()+' $/ha</span></div>';
+      html+='<div style="background:#0a1a0a;border-radius:4px;height:8px;margin-bottom:6px;">';
+      html+='<div style="background:'+c.couleur+';height:8px;border-radius:4px;width:'+pct+'%;transition:width 0.3s;"></div></div>';
+      html+='<div style="display:flex;justify-content:space-between;">';
+      html+='<span style="font-size:11px;color:#6a8a6a;">'+c.note+'</span>';
+      html+='<span style="font-size:11px;color:#5a7a5a;">MN: '+c.mn.toLocaleString()+' $/ha</span></div>';
+      html+='</div>';
+    });
+    html+='</div>';
+
+    // Cultures en cours
+    if(G.parcCultures.length>0){
+      html+='<div style="margin-top:16px;font-weight:bold;color:#c8e8c8;margin-bottom:8px;">📋 Cultures en cours</div>';
+      html+='<div style="display:flex;flex-direction:column;gap:6px;">';
+      G.parcCultures.forEach(function(p,i){
+        var c=CULTURES[p.cultureId];if(!c)return;
+        var prog=Math.round((G.tour-p.tourSemis)/c.duree*7*100);prog=Math.min(prog,100);
+        var restant=Math.max(0,Math.round((p.tourSemis+Math.ceil(c.duree/7))-G.tour));
+        html+='<div style="background:#151f15;border:1px solid #2a3a2a;border-radius:6px;padding:10px;">';
+        html+='<div style="display:flex;justify-content:space-between;margin-bottom:6px;">';
+        html+='<span style="color:#c8e8c8;">'+c.label+' — '+p.ha+' ha</span>';
+        html+='<div style="display:flex;gap:8px;align-items:center;">';
+        html+='<span style="font-size:11px;color:#6a8a6a;">'+restant+' sem. restantes</span>';
+        html+='<button onclick="G.parcCultures.splice('+i+',1);document.getElementById(\'panel\').innerHTML=renderCultures();" ';
+        html+='style="background:#3a1a1a;border:1px solid #5a2a2a;color:#e87070;border-radius:4px;padding:2px 8px;cursor:pointer;font-size:11px;">✕</button>';
+        html+='</div></div>';
+        html+='<div style="background:#0a1a0a;border-radius:4px;height:6px;">';
+        html+='<div style="background:'+c.couleur+';height:6px;border-radius:4px;width:'+prog+'%;"></div></div>';
+        html+='<div style="font-size:10px;color:#5a7a5a;margin-top:4px;">'+prog+'% — '+getStade(prog)+'</div>';
+        html+='</div>';
+      });
+      html+='</div>';
+    }
+  }
+
+  // ── VUE DÉTAIL ITK ──
+  else if(cultView==='detail'){
+    html+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;">';
+    Object.values(CULTURES).forEach(function(c){
+      html+='<button onclick="cultSel=\''+c.id+'\';document.getElementById(\'panel\').innerHTML=renderCultures();" ';
+      html+='style="padding:5px 10px;border-radius:6px;border:1px solid '+(cultSel===c.id?c.couleur:'#2a3a2a')+';';
+      html+='background:'+(cultSel===c.id?'#1a2a1a':'#111a11')+';color:'+(cultSel===c.id?c.couleur:'#7a8a7a')+';cursor:pointer;font-size:11px;">';
+      html+=c.label+'</button>';
+    });
+    html+='</div>';
+
+    if(cultSel && CULTURES[cultSel]){
+      var c=CULTURES[cultSel];
+      html+='<div style="background:#111a11;border:1px solid '+c.couleur+'40;border-radius:8px;padding:14px;">';
+      html+='<div style="font-size:16px;font-weight:bold;color:'+c.couleur+';margin-bottom:4px;">'+c.label+'</div>';
+      html+='<div style="color:#8a9a8a;font-size:12px;margin-bottom:10px;">'+c.desc+'</div>';
+      html+='<div style="background:#1a0a0a;border:1px solid #5a3030;border-radius:6px;padding:8px;margin-bottom:12px;font-size:12px;color:#e8a0a0;">⚠️ '+c.risque+'</div>';
+
+      // KPIs
+      html+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;">';
+      var kpis=[
+        {l:'Rendement',v:c.rendRef+' t/ha',col:'#78c878'},
+        {l:'Prix marché',v:c.prixRef+' $/t',col:'#c8a870'},
+        {l:'Coût ITK',v:c.coutITK+' $/ha',col:'#e87070'},
+        {l:'Marge brute',v:c.mbRef+' $/ha',col:c.couleur}
+      ];
+      kpis.forEach(function(k){
+        html+='<div style="background:#0a1a0a;border-radius:6px;padding:8px;text-align:center;">';
+        html+='<div style="font-size:10px;color:#5a7a5a;">'+k.l+'</div>';
+        html+='<div style="font-size:15px;font-weight:bold;color:'+k.col+';">'+k.v+'</div></div>';
+      });
+      html+='</div>';
+
+      // Phases ITK
+      html+='<div style="font-size:12px;color:#6a9a6a;margin-bottom:8px;font-weight:bold;">ITINÉRAIRE TECHNIQUE</div>';
+      html+='<div style="display:flex;flex-direction:column;gap:4px;">';
+      c.phases.forEach(function(ph,i){
+        html+='<div style="display:flex;justify-content:space-between;align-items:start;background:#0d170d;border-radius:4px;padding:7px 10px;">';
+        html+='<div style="flex:1;">';
+        html+='<div style="font-size:12px;color:#b8d8b8;">'+ph.op+'</div>';
+        html+='<div style="font-size:10px;color:#5a7a5a;margin-top:2px;">'+ph.intrant+'</div></div>';
+        html+='<div style="font-size:13px;font-weight:bold;color:#e8c070;white-space:nowrap;margin-left:12px;">'+ph.cout.toFixed(0)+' $/ha</div>';
+        html+='</div>';
+      });
+      html+='</div>';
+
+      // Bouton semer
+      html+='<button onclick="cultView=\'semer\';document.getElementById(\'panel\').innerHTML=renderCultures();" ';
+      html+='style="margin-top:12px;width:100%;padding:10px;background:#1a3a1a;border:1px solid '+c.couleur+';border-radius:8px;color:'+c.couleur+';cursor:pointer;font-size:14px;font-weight:bold;">🌱 Semer cette culture</button>';
+      html+='</div>';
+    } else {
+      html+='<div style="text-align:center;color:#5a7a5a;padding:30px;">← Sélectionne une culture ci-dessus</div>';
+    }
+  }
+
+  // ── VUE SEMER ──
+  else if(cultView==='semer'){
+    html+='<div style="background:#111a11;border:1px solid #2a4a2a;border-radius:8px;padding:14px;">';
+    html+='<div style="font-size:14px;font-weight:bold;color:#78c878;margin-bottom:14px;">🌱 Lancer une culture</div>';
+
+    // Sélection culture
+    html+='<div style="margin-bottom:12px;">';
+    html+='<label style="font-size:12px;color:#6a9a6a;display:block;margin-bottom:6px;">Culture</label>';
+    html+='<select id="sel-culture" onchange="cultSel=this.value;document.getElementById(\'panel\').innerHTML=renderCultures();" ';
+    html+='style="width:100%;padding:8px;background:#0a1a0a;border:1px solid #2a4a2a;color:#c8e8c8;border-radius:6px;font-size:13px;">';
+    html+='<option value="">-- Choisir --</option>';
+    Object.values(CULTURES).forEach(function(c){
+      html+='<option value="'+c.id+'"'+(cultSel===c.id?' selected':'')+'>'+c.label+' — MB '+c.mbRef+' $/ha</option>';
+    });
+    html+='</select></div>';
+
+    if(cultSel && CULTURES[cultSel]){
+      var c=CULTURES[cultSel];
+      // Vérification fenêtre semis
+      var sem=sw(G.tour);
+      var ok=false;
+      if(c.semisDebut<=c.semisFin){ok=(sem>=c.semisDebut&&sem<=c.semisFin);}
+      else{ok=(sem>=c.semisDebut||sem<=c.semisFin);}
+
+      if(!ok){
+        html+='<div style="background:#2a1a1a;border:1px solid #5a3030;border-radius:6px;padding:10px;margin-bottom:12px;color:#e87070;font-size:12px;">';
+        html+='⚠️ Hors fenêtre de semis optimale pour cette culture.<br>';
+        html+='Fenêtre recommandée : S'+c.semisDebut+' → S'+c.semisFin+'</div>';
+      } else {
+        html+='<div style="background:#1a2a1a;border:1px solid #3a5a3a;border-radius:6px;padding:10px;margin-bottom:12px;color:#78c878;font-size:12px;">';
+        html+='✅ Fenêtre de semis optimale — Semis recommandé</div>';
+      }
+
+      // Surface
+      html+='<div style="margin-bottom:12px;">';
+      html+='<label style="font-size:12px;color:#6a9a6a;display:block;margin-bottom:6px;">Surface à semer</label>';
+      html+='<div style="display:flex;align-items:center;gap:8px;">';
+      html+='<input type="range" id="sl-ha" min="25" max="'+Math.max(25,haDispo)+'" step="25" value="25" ';
+      html+='oninput="document.getElementById(\'val-ha\').textContent=this.value;" ';
+      html+='style="flex:1;accent-color:#5a9a5a;">';
+      html+='<span id="val-ha" style="color:#78c878;font-weight:bold;min-width:60px;">25 ha</span>';
+      html+='</div>';
+      html+='<div style="font-size:11px;color:#5a7a5a;margin-top:4px;">Disponible : '+haDispo+' ha — blocs de 25 ha</div>';
+      html+='</div>';
+
+      // Calcul coût
+      html+='<div style="background:#0a1a0a;border-radius:6px;padding:10px;margin-bottom:12px;">';
+      html+='<div style="font-size:11px;color:#5a7a5a;margin-bottom:6px;">ESTIMATION (25 ha)</div>';
+      html+='<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">';
+      html+='<span style="color:#8a9a8a;">Coût intrants ITK</span><span style="color:#e87070;">-'+c.coutITK.toLocaleString()+' $/ha</span></div>';
+      html+='<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">';
+      html+='<span style="color:#8a9a8a;">Marge brute attendue</span><span style="color:#78c878;">+'+c.mbRef.toLocaleString()+' $/ha</span></div>';
+      html+='<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:bold;border-top:1px solid #2a3a2a;padding-top:6px;margin-top:6px;">';
+      html+='<span style="color:#c8e8c8;">MB totale (25 ha)</span><span style="color:'+c.couleur+';">'+(c.mbRef*25).toLocaleString()+' $</span></div>';
+      html+='</div>';
+
+      html+='<button onclick="lancerCulture();" ';
+      html+='style="width:100%;padding:12px;background:#1a4a1a;border:1px solid #5a9a5a;border-radius:8px;color:#78c878;cursor:pointer;font-size:14px;font-weight:bold;">🌱 Confirmer le semis</button>';
+    }
+    html+='</div>';
+  }
+
+  html+='</div>';
+  return html;
+}
+
+function getStade(pct){
+  if(pct<10)return 'Semis / Levée';
+  if(pct<30)return 'Végétation';
+  if(pct<55)return 'Tallage / Montaison';
+  if(pct<75)return 'Floraison / Fécondation';
+  if(pct<90)return 'Remplissage grain';
+  return 'Maturité — Récolte proche';
+}
+
+function lancerCulture(){
+  var id=document.getElementById('sel-culture').value;
+  var ha=parseInt(document.getElementById('sl-ha').value);
+  if(!id||!CULTURES[id]||ha<=0)return;
+  var c=CULTURES[id];
+  G.parcCultures.push({cultureId:id,ha:ha,tourSemis:G.tour,stade:'semis'});
+  G.jTitle='🌱 Semis lancé';
+  G.jContent='<b>'+c.label+'</b> — '+ha+' ha semés à la S'+sw(G.tour)+' An'+an(G.tour)+'<br>Récolte prévue dans ~'+Math.ceil(c.duree/7)+' semaines<br>MB attendue : '+(c.mbRef*ha).toLocaleString()+' $';
+  cultView='combos';
+  document.getElementById('panel').innerHTML=renderCultures();
+}
 
 // INIT
 updHdr();genTour(1);RP();setTab('troupeau');
