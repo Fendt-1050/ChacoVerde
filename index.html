@@ -370,7 +370,7 @@ var CATEGORIES_BOVINS=[
   {v:'Taureau',desc:'reproducteur',poids:750,sexe:'M'}
 ];
 // Durée moyenne de gestation bovine, en semaines (≈283 jours)
-var GESTATION_SEMAINES=40;
+var GESTATION_SEMAINES=20; // durée compressée pour le jeu (réalité ≈40 semaines)
 var LOTS_INIT=[
   {id:'L1',nom:'Génisses 2025',espece:'Brangus F1',nb:120,age:18,
    statut:'elevage',parcelle:'Zone Pangola Nord',poids:280,gmq:0.65,
@@ -530,10 +530,10 @@ function initMapEvents(){
     var rect=sc.getBoundingClientRect();
     var mx=e.clientX-rect.left;
     var my=e.clientY-rect.top;
-    // Zoom proportionnel à l'amplitude du deltaY (plus progressif qu'un cran fixe),
-    // borné pour éviter un saut trop brutal sur les grosses molettes/trackpads.
-    var f=Math.exp(-e.deltaY*0.0022);
-    f=Math.max(0.9,Math.min(1.12,f));
+    // Zoom très progressif au pas de molette — un cran classique (deltaY≈100-120) ne doit
+    // produire qu'un minuscule changement d'échelle, quel que soit le type de souris/trackpad.
+    var f=Math.exp(-e.deltaY*0.0006);
+    f=Math.max(0.985,Math.min(1.015,f));
     mapZoomAt(mx,my,f);
   },{passive:false});
   // Mouse drag
@@ -698,16 +698,32 @@ function renderCarteMap(){
   // Contour réel de la propriété — tracé fidèle (relevé satellite), superposé à la grille de jeu
   // pour que la silhouette reste reconnaissable même si les parcelles carrées "escaliers" en interne.
   html+='<polygon points="'+FARM_POLY.map(function(pt){return (pt[0]*BW)+','+(pt[1]*BH);}).join(' ')+'" fill="none" stroke="#ffb020" stroke-width="2.5" opacity=".9" style="pointer-events:none"/>';
-  // Pistes internes — ligne de circulation + bordure boisée de part et d'autre (chantiers en pointillé)
+  // Pistes internes — tracées sur la limite (bordure) commune entre les deux parcelles, comme une
+  // délimitation de champs (ligne horizontale si les blocs sont empilés verticalement — lignes/rows
+  // adjacentes dans la même colonne —, ligne verticale si les blocs sont voisins dans la même rangée).
   function centreBloc(k){var rc=k.split(',').map(Number);return [(rc[1]+0.5)*BW,(rc[0]+0.5)*BH];}
+  function edgePiste(ka,kb){
+    var ra=ka.split(',').map(Number),rb=kb.split(',').map(Number);
+    if(ra[0]===rb[0]){
+      // même rangée, colonnes voisines → frontière verticale entre les deux blocs
+      var xEdge=Math.max(ra[1],rb[1])*BW;
+      var yTop=ra[0]*BH,yBot=yTop+BH;
+      return [xEdge,yTop,xEdge,yBot];
+    } else {
+      // même colonne, rangées voisines → frontière horizontale entre les deux blocs
+      var yEdge=Math.max(ra[0],rb[0])*BH;
+      var xLeft=ra[1]*BW,xRight=xLeft+BW;
+      return [xLeft,yEdge,xRight,yEdge];
+    }
+  }
   G.pistes.forEach(function(p){
-    var c1=centreBloc(p.a),c2=centreBloc(p.b);
-    html+='<line x1="'+c1[0]+'" y1="'+c1[1]+'" x2="'+c2[0]+'" y2="'+c2[1]+'" stroke="#2d4a1a" stroke-width="'+(BW*0.22)+'" opacity=".55" style="pointer-events:none"/>';
-    html+='<line x1="'+c1[0]+'" y1="'+c1[1]+'" x2="'+c2[0]+'" y2="'+c2[1]+'" stroke="#c9a876" stroke-width="2" opacity=".9" style="pointer-events:none"/>';
+    var e=edgePiste(p.a,p.b);
+    html+='<line x1="'+e[0]+'" y1="'+e[1]+'" x2="'+e[2]+'" y2="'+e[3]+'" stroke="#2d4a1a" stroke-width="'+(BW*0.22)+'" opacity=".55" style="pointer-events:none"/>';
+    html+='<line x1="'+e[0]+'" y1="'+e[1]+'" x2="'+e[2]+'" y2="'+e[3]+'" stroke="#c9a876" stroke-width="2" opacity=".9" style="pointer-events:none"/>';
   });
   G.chantiersPistes.forEach(function(p){
-    var c1=centreBloc(p.a),c2=centreBloc(p.b);
-    html+='<line x1="'+c1[0]+'" y1="'+c1[1]+'" x2="'+c2[0]+'" y2="'+c2[1]+'" stroke="#e0a060" stroke-width="2" stroke-dasharray="4,3" opacity=".85" style="pointer-events:none"/>';
+    var e=edgePiste(p.a,p.b);
+    html+='<line x1="'+e[0]+'" y1="'+e[1]+'" x2="'+e[2]+'" y2="'+e[3]+'" stroke="#e0a060" stroke-width="2" stroke-dasharray="4,3" opacity=".85" style="pointer-events:none"/>';
   });
   // Río Paraguay — deux bras qui descendent du nord et se rejoignent en un seul chenal vers le sud
   // (îlot/banc de sable entre les deux bras, comme sur l'imagerie satellite).
@@ -1547,24 +1563,37 @@ function operationLot(id,op){
   if(!l)return;
   if(op==='iatf'){
     if(l.taureaux<=0){alert('Ce lot n\'a pas de taureau assigné — ajoutez-en un avant l\'IATF/la saillie (bouton "🐂 Ajouter taureau")');return;}
+    if(l.velageAttendu>0){alert('Ce lot est déjà gestant (vêlage prévu semaine '+l.velageAttendu+') — inutile de refaire une IATF maintenant.');return;}
     var cout=l.nb*30;
     if(G.tresorerie<cout){alert('Fonds insuffisants ('+nf(cout)+' $ requis)');return;}
     G.tresorerie-=cout;
-    l.echoVide=0;
-    addJournal('💉 IATF sur lot "'+l.nom+" — "+nf(cout)+' $ prélevés','inf');
+    // L'IATF féconde directement une partie du lot (taux de réussite réaliste) — l'échographie
+    // servira ensuite seulement à confirmer, pas à relancer le chrono de gestation.
+    var tauxIatf=0.55+Math.random()*0.15;
+    l.nbGestantes=Math.round(l.nb*tauxIatf);
+    l.echoVide=l.nb-l.nbGestantes;
+    l.velageAttendu=G.tour+GESTATION_SEMAINES;
+    addJournal('💉 IATF sur lot "'+l.nom+'" — '+nf(cout)+' $ prélevés, '+l.nbGestantes+' vaches fécondées — vêlage prévu semaine '+l.velageAttendu,'inf');
     addPLCharge('IATF',cout);
   } else if(op==='echo'){
     var cout=l.nb*10;
     if(G.tresorerie<cout){alert('Fonds insuffisants');return;}
     G.tresorerie-=cout;
-    l.echoVide=Math.floor(l.nb*0.15);
-    if(l.taureaux>0){
+    if(l.velageAttendu>0){
+      // Déjà gestantes (IATF ou monte naturelle) : l'échographie CONFIRME seulement,
+      // elle ne doit jamais repousser la date de vêlage déjà fixée.
+      l.echoVide=Math.max(0,l.nb-l.nbGestantes);
+      var semRestantes=Math.max(0,l.velageAttendu-G.tour);
+      addJournal('🔬 Échographie lot "'+l.nom+'" — gestation confirmée pour '+l.nbGestantes+' vaches, vêlage dans '+semRestantes+' sem. (semaine '+l.velageAttendu+')','inf');
+    } else if(l.taureaux>0){
+      l.echoVide=Math.floor(l.nb*0.15);
       l.nbGestantes=Math.max(0,l.nb-l.echoVide);
       l.velageAttendu=G.tour+GESTATION_SEMAINES;
       addJournal('🔬 Échographie lot "'+l.nom+'" — '+l.echoVide+' vaches vides, '+l.nbGestantes+' gestantes — vêlage prévu semaine '+l.velageAttendu,'inf');
     } else {
+      l.echoVide=l.nb;
       l.nbGestantes=0;l.velageAttendu=0;
-      addJournal('🔬 Échographie lot "'+l.nom+'" — '+l.echoVide+' vaches vides détectées (aucun taureau assigné : pas de gestation à suivre)','inf');
+      addJournal('🔬 Échographie lot "'+l.nom+'" — toutes vides (aucun taureau assigné : pas de gestation à suivre)','inf');
     }
     addPLCharge('Échographie',cout);
   } else if(op==='vacc'){
@@ -2832,6 +2861,7 @@ function addPLCharge(label,montant){
 
 // ─── TOUR ────────────────────────────────────────────────────────────────────
 function passerTour(){
+  if(G.decisionEnAttente){ouvrirDecisionModal();return;} // une décision doit être tranchée avant de continuer
   // Archiver P&L
   G.plHistory.push({tour:G.tour,revenus:G.plSemaine.revenus,charges:G.plSemaine.charges,resultat:G.plSemaine.resultat});
   // Reset P&L semaine
@@ -2911,6 +2941,19 @@ function passerTour(){
   G.lots.forEach(function(l){
     l.poids=Math.round(l.poids+l.gmq*7*factCanicule);
     l.age++;
+  });
+  // Monte naturelle — si un taureau est en service dans un lot sans gestation en cours,
+  // chance hebdomadaire de fécondation spontanée (filet de sécurité indépendant de l'IATF/Échographie)
+  G.lots.forEach(function(l){
+    if(l.statut!=='taureaux'&&l.taureaux>0&&l.velageAttendu===0&&l.nb>0){
+      if(Math.random()<0.12){
+        var tauxMonte=0.5+Math.random()*0.2;
+        l.nbGestantes=Math.round(l.nb*tauxMonte);
+        l.echoVide=l.nb-l.nbGestantes;
+        l.velageAttendu=G.tour+GESTATION_SEMAINES;
+        addJournal('🐂 Monte naturelle — '+l.nbGestantes+' vaches fécondées dans le lot "'+l.nom+'" (taureau en service) — vêlage prévu semaine '+l.velageAttendu,'ev');
+      }
+    }
   });
   // Vêlages — les lots dont la gestation arrive à terme donnent naissance à des veaux
   var nouveauxLotsVeaux=[];
@@ -3092,10 +3135,179 @@ var EVENEMENTS_MONDE=[
     var montant=Math.round(3000+Math.random()*8000);
     G.tresorerie=Math.max(0,G.tresorerie-montant);
     return {titre:'Vol / dégradation',desc:'Du matériel ou du carburant a été dérobé sur l\'exploitation : -'+nf(montant)+' $.'};
+  }},
+  {id:'tempete',icone:'🌩️',poids:2,fn:function(){
+    if(G.machines.length===0)return null;
+    var m=G.machines[Math.floor(Math.random()*G.machines.length)];
+    m.etat=Math.max(15,m.etat-Math.round(5+Math.random()*10));
+    return {titre:'Tempête de vent',desc:'Un orage violent balaie l\'exploitation — "'+m.n+'" a pris la pluie, état légèrement dégradé.'};
+  }},
+  {id:'route_coupee',icone:'🚧',poids:2,fn:function(){
+    G.routeCoupeeJusqua=G.tour+(1+Math.floor(Math.random()*2));
+    return {titre:'Route coupée',desc:'La route d\'accès est temporairement impraticable (crue/travaux) — les livraisons et ventes sont ralenties quelques jours.'};
+  }},
+  {id:'presse_locale',icone:'📰',poids:1,fn:function(){
+    var montant=Math.round(2000+Math.random()*4000);
+    G.tresorerie+=montant;
+    addPLRevenu('Visite presse / image',montant);
+    return {titre:'Reportage valorisant',desc:'Un reportage local met en avant vos pratiques agricoles — retombée commerciale inattendue : +'+nf(montant)+' $.'};
+  }},
+  {id:'essaim',icone:'🐝',poids:1,fn:function(){
+    if(G.ouvriers.length===0)return null;
+    var cout=Math.round(500+Math.random()*1500);
+    G.tresorerie-=cout;
+    addPLCharge('Intervention essaim/nuisibles',cout);
+    return {titre:'Essaim dans les bâtiments',desc:'Un essaim s\'installe près des bâtiments d\'élevage — intervention nécessaire : -'+nf(cout)+' $.'};
+  }},
+  {id:'record_pluvio',icone:'🌦️',poids:2,fn:function(){
+    var patures=Object.keys(carteBlocs).filter(function(k){return carteBlocs[k]==='pangola'||carteBlocs[k]==='pature';});
+    if(patures.length===0)return null;
+    patures.forEach(function(k){stockHerbeBlocs[k]=Math.min(100,(stockHerbeBlocs[k]||100)+15);});
+    return {titre:'Pluies bénéfiques',desc:'Des pluies bien réparties dopent la repousse de l\'herbe sur toutes les pâtures.'};
+  }},
+  {id:'audit_banque',icone:'🏦',poids:1,fn:function(){
+    if(!G.dettes||G.dettes.length===0)return null;
+    return {titre:'Audit bancaire',desc:'Votre banque partenaire revoit vos dossiers de dette — rien à faire, mais restez attentif à vos ratios d\'endettement ces prochaines semaines.'};
+  }},
+  {id:'main_oeuvre',icone:'👥',poids:1,fn:function(){
+    if(G.ouvriers.length===0)return null;
+    var o=G.ouvriers[Math.floor(Math.random()*G.ouvriers.length)];
+    return {titre:'Ouvrier motivé',desc:(o.nom||'Un ouvrier')+' se distingue par son sérieux ce mois-ci — bon pour l\'ambiance de l\'équipe.'};
   }}
 ];
+// Événements "décision" — déclenchent un choix actif du joueur (coût/risque différents selon l'option),
+// pour renforcer l'interactivité au-delà des événements purement passifs ci-dessus.
+var EVENEMENTS_DECISION=[
+  {id:'dec_secheresse_imminente',icone:'🌵',poids:2,cond:function(){return G.parcCultures.some(function(pc){return !pc.pret;});},fn:function(){
+    return {titre:'Sécheresse imminente',
+      desc:'Les prévisions annoncent un coup de sec sévère sur 2-3 semaines. Agir maintenant protège les cultures en cours mais coûte cher ; ne rien faire est gratuit mais risqué.',
+      options:[
+        {label:'Irriguer d\'urgence (-4 500 $, cultures protégées)',fn:function(){
+          G.tresorerie-=4500;addPLCharge('Irrigation d\'urgence',4500);
+          return 'Irrigation d\'urgence lancée — les cultures en cours sont protégées de la sécheresse à venir.';
+        }},
+        {label:'Ne rien faire (gratuit, mais risque de pertes)',fn:function(){
+          G.secheresseJusqua=G.tour+(3+Math.floor(Math.random()*3));
+          G.parcCultures.forEach(function(pc){if(!pc.pret)pc.etatSante=Math.max(15,(pc.etatSante||100)-Math.round(20+Math.random()*20));});
+          return 'Vous n\'intervenez pas — la sécheresse frappe de plein fouet les cultures en cours.';
+        }}
+      ]};
+  }},
+  {id:'dec_acheteur',icone:'🤝',poids:2,cond:function(){return true;},fn:function(){
+    var cible=['trendSoja','trendMais','trendRiz','trendSorgho','trendBoeuf'][Math.floor(Math.random()*5)];
+    return {titre:'Acheteur pressé',
+      desc:'Un négociant propose un contrat ferme sur le '+NOMS_PRIX[cible]+', payé comptant mais sous la cotation du marché. Attendre pourrait payer plus... ou moins.',
+      options:[
+        {label:'Accepter le contrat ferme (+encaissement immédiat)',fn:function(){
+          var montant=Math.round(6000+Math.random()*9000);
+          G.tresorerie+=montant;addPLRevenu('Contrat ferme anticipé',montant);
+          return 'Contrat accepté — '+nf(montant)+' $ encaissés immédiatement.';
+        }},
+        {label:'Refuser et attendre le marché (risque de chute des prix)',fn:function(){
+          var choc=0.85+Math.random()*0.25;
+          P[cible]=P[cible]*choc;
+          return choc<1?'Vous avez attendu — le marché s\'est retourné, le prix du '+NOMS_PRIX[cible]+' a reculé.':'Vous avez attendu — bonne pioche, le marché s\'est apprécié.';
+        }}
+      ]};
+  }},
+  {id:'dec_epidemie',icone:'🐄',poids:2,cond:function(){return G.lots.length>0;},fn:function(){
+    var l=G.lots[Math.floor(Math.random()*G.lots.length)];
+    return {titre:'Alerte sanitaire sur le lot "'+l.nom+'"',
+      desc:'Le vétérinaire signale un risque de contagion sur ce lot. Un traitement préventif coûte cher mais écarte le risque ; parier sur la chance ne coûte rien.',
+      options:[
+        {label:'Traitement vétérinaire préventif (-'+nf(l.nb*15)+' $)',fn:function(){
+          var cout=l.nb*15;G.tresorerie-=cout;addPLCharge('Traitement préventif',cout);
+          return 'Traitement administré — le lot "'+l.nom+'" est protégé.';
+        }},
+        {label:'Ne pas traiter (gratuit, risque de perte d\'animaux)',fn:function(){
+          if(Math.random()<0.45){
+            var pertes=Math.min(l.nb-1,1+Math.floor(Math.random()*4));
+            l.nb=Math.max(1,l.nb-pertes);
+            return 'Pas de chance — '+pertes+' tête(s) perdue(s) dans le lot "'+l.nom+'".';
+          }
+          return 'Finalement rien à signaler — le lot s\'en sort sans traitement.';
+        }}
+      ]};
+  }},
+  {id:'dec_panne_critique',icone:'🔧',poids:1,cond:function(){return G.machines.length>0;},fn:function(){
+    var m=G.machines[Math.floor(Math.random()*G.machines.length)];
+    return {titre:'Panne sur "'+m.n+'"',
+      desc:'Cette machine montre des signes de faiblesse (état '+m.etat+'%). Une réparation préventive immobilise le budget mais évite une casse plus coûteuse en pleine saison.',
+      options:[
+        {label:'Réparation préventive (-1 800 $, état restauré)',fn:function(){
+          G.tresorerie-=1800;addPLCharge('Réparation préventive',1800);m.etat=Math.min(100,m.etat+30);
+          return '"'+m.n+'" révisée — état restauré à '+m.etat+'%.';
+        }},
+        {label:'Continuer à l\'utiliser (gratuit, risque de casse)',fn:function(){
+          if(Math.random()<0.4){
+            m.etat=Math.max(10,m.etat-30);
+            return 'La panne redoutée survient — état de "'+m.n+'" fortement dégradé.';
+          }
+          return 'La machine tient le coup pour cette fois.';
+        }}
+      ]};
+  }},
+  {id:'dec_voisin',icone:'🧑‍🌾',poids:1,cond:function(){return true;},fn:function(){
+    return {titre:'Proposition du voisin',
+      desc:'Un producteur voisin propose un partage de matériel/main-d\'œuvre pour la semaine : gain de temps immédiat contre un petit coût de coordination, ou vous restez autonome.',
+      options:[
+        {label:'Accepter l\'échange (-800 $, gain de temps)',fn:function(){
+          G.tresorerie-=800;addPLCharge('Coordination inter-exploitation',800);
+          if(G.chantiers.length>0)G.chantiers[0].sRestantes=Math.max(0,G.chantiers[0].sRestantes-1);
+          return 'Échange accepté — un chantier en cours avance plus vite cette semaine.';
+        }},
+        {label:'Rester autonome (gratuit)',fn:function(){
+          return 'Vous déclinez poliment — rien ne change, mais aucun coût non plus.';
+        }}
+      ]};
+  }}
+];
+function ouvrirDecisionModal(){
+  var d=G.decisionEnAttente;
+  if(!d)return;
+  var html='<div style="margin-bottom:10px;color:#ccc;font-size:12px">'+d.desc+'</div>';
+  d.options.forEach(function(opt,i){
+    html+='<button class="btn btn-b" style="display:block;width:100%;text-align:left;margin-bottom:6px" onclick="resoudreDecision('+i+')">'+opt.label+'</button>';
+  });
+  openModal(d.icone+' '+d.titre,html);
+}
+function resoudreDecision(i){
+  var d=G.decisionEnAttente;
+  if(!d)return;
+  var opt=d.options[i];
+  if(!opt)return;
+  var resultat=opt.fn();
+  G.decisionEnAttente=null;
+  closeModal();
+  G.evenements.unshift({tour:G.tour,icone:d.icone,titre:d.titre,desc:resultat});
+  if(G.evenements.length>60)G.evenements.length=60;
+  addJournal(d.icone+' '+d.titre+' — '+resultat,'monde');
+  updateHeader();
+  if(G.curTab==='carte')renderCarteMap();else renderPanel();
+}
 function declencherEvenementAleatoire(){
-  if(Math.random()>0.35)return; // ≈35%/semaine → un événement toutes les 2-3 semaines en moyenne, ferme "vivante"
+  if(Math.random()>0.55)return; // ≈55%/semaine → ferme nettement plus "vivante" qu'avant
+  // ~30% de chance que l'événement soit une décision active plutôt qu'un simple effet passif
+  if(Math.random()<0.3){
+    var candidats=EVENEMENTS_DECISION.filter(function(e){return e.cond();});
+    if(candidats.length>0){
+      var totalPoidsD=candidats.reduce(function(s,e){return s+e.poids;},0);
+      var rd=Math.random()*totalPoidsD;
+      var chosenD=null;
+      for(var j=0;j<candidats.length;j++){
+        rd-=candidats[j].poids;
+        if(rd<=0){chosenD=candidats[j];break;}
+      }
+      if(chosenD){
+        var resD=chosenD.fn();
+        if(resD){
+          G.decisionEnAttente={icone:chosenD.icone,titre:resD.titre,desc:resD.desc,options:resD.options};
+          ouvrirDecisionModal();
+          return;
+        }
+      }
+    }
+  }
   var totalPoids=EVENEMENTS_MONDE.reduce(function(s,e){return s+e.poids;},0);
   var r=Math.random()*totalPoids;
   var chosen=null;
